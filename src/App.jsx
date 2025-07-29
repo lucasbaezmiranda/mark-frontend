@@ -3,7 +3,7 @@ import { useState } from 'react';
 function App() {
   const [tickers, setTickers] = useState("AAPL, GOOGL, MSFT");
   const [startDate, setStartDate] = useState("2023-01-01");
-  const [endDate, setEndDate] = useState("2023-12-31");
+  const [endDate, setEndDate] = useState("2023-01-31");
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(false);
 
