@@ -36,13 +36,14 @@ export default function MarkowitzForm({ onResults }) {
 
     try {
       const res = await fetch("https://5e1eqa5y6b.execute-api.us-east-1.amazonaws.com/v1/query", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
-        },
-        body: JSON.stringify(payload)
-      });
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
+      },
+      body: JSON.stringify({ body: JSON.stringify(payload) })
+    });
+
 
       console.log("📥 Status respuesta:", res.status);
 
