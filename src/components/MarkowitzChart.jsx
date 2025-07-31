@@ -18,7 +18,7 @@ export default function MarkowitzChart({ data }) {
     y: p.return
   }));
 
-  // Activos individuales con etiqueta (ticker)
+  // Activos individuales con etiqueta
   const singleAssets = data.single_assets.map(a => ({
     x: a.risk,
     y: a.return,
@@ -32,7 +32,8 @@ export default function MarkowitzChart({ data }) {
       data: portfolios,
       backgroundColor: 'blue',
       pointRadius: 4,
-      showLine: false
+      showLine: false,
+      datalabels: { display: false } // ❌ Sin etiquetas
     },
     {
       label: 'Activos individuales',
@@ -42,6 +43,7 @@ export default function MarkowitzChart({ data }) {
       pointRadius: 6,
       showLine: false,
       datalabels: {
+        display: true,           // ✅ Solo aquí mostramos etiquetas
         align: 'right',
         anchor: 'end',
         font: { weight: 'bold' },
@@ -57,7 +59,8 @@ export default function MarkowitzChart({ data }) {
       borderWidth: 1.5,
       backgroundColor: 'transparent',
       showLine: true,
-      pointRadius: 0
+      pointRadius: 0,
+      datalabels: { display: false } // ❌ Sin etiquetas
     }))
   ];
 
@@ -68,10 +71,7 @@ export default function MarkowitzChart({ data }) {
     maintainAspectRatio: false,
     plugins: {
       legend: { position: 'top' },
-      datalabels: {
-        display: true,
-        color: 'black'
-      },
+      datalabels: { display: false }, // ❌ Desactivar globalmente
       tooltip: {
         callbacks: {
           label: function(context) {
