@@ -16,11 +16,10 @@ export default function MarkowitzForm({ onResults }) {
     generarAleatoria();
   }, []);
 
-  const handleSubmit = async (e, auto = false) => {
+  const handleSubmit = async (e) => {
     e && e.preventDefault();
     setLoading(true);
 
-    // ✅ Limpieza de tickers para evitar espacios o valores vacíos
     const cleanedTickers = tickers
       .split(',')
       .map(t => t.trim().toUpperCase())
@@ -36,14 +35,14 @@ export default function MarkowitzForm({ onResults }) {
 
     try {
       const res = await fetch("https://5e1eqa5y6b.execute-api.us-east-1.amazonaws.com/v1/query", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
-      },
-      body: JSON.stringify({ body: JSON.stringify(payload) })
-    });
-
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
+        },
+        // 👇 Ajuste clave para que la Lambda lo reciba igual que el test CLI
+        body: JSON.stringify({ body: JSON.stringify(payload) })
+      });
 
       console.log("📥 Status respuesta:", res.status);
 
@@ -61,32 +60,23 @@ export default function MarkowitzForm({ onResults }) {
     }
   };
 
-  // ✅ Función para generar tickers y fechas aleatorias
   const generarAleatoria = () => {
-    // 1) Seleccionar 3 tickers aleatorios
     const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, 3);
 
-    // 2) Hoy
     const now = new Date();
-
-    // 3) Fecha máxima para inicio = hoy - 6 meses
     const maxStart = new Date();
     maxStart.setMonth(now.getMonth() - 6);
 
-    // 4) Fecha mínima para inicio = hoy - 2 años
     const minStart = new Date();
     minStart.setFullYear(now.getFullYear() - 2);
 
-    // 5) Generar fecha aleatoria entre minStart y maxStart
     const randomStart = new Date(
       minStart.getTime() + Math.random() * (maxStart.getTime() - minStart.getTime())
     );
 
-    // 6) Fecha de fin = inicio + 6 meses
     const randomEnd = new Date(randomStart);
     randomEnd.setMonth(randomStart.getMonth() + 6);
 
-    // 7) Setear estados
     setTickers(selected.join(", "));
     setStartDate(randomStart.toISOString().split("T")[0]);
     setEndDate(randomEnd.toISOString().split("T")[0]);
