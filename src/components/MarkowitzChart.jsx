@@ -25,14 +25,6 @@ export default function MarkowitzChart({ data }) {
     ticker: a.ticker
   }));
 
-  // Frontera eficiente óptima
-  const frontierData = data.efficient_frontier
-    ? data.efficient_frontier.risks.map((r, idx) => ({
-        x: r,
-        y: data.efficient_frontier.returns[idx]
-      }))
-    : [];
-
   // Construir datasets
   const datasets = [
     {
@@ -69,17 +61,7 @@ export default function MarkowitzChart({ data }) {
       showLine: true,
       pointRadius: 0,
       datalabels: { display: false }
-    })),
-    {
-      label: 'Frontera eficiente óptima',
-      data: frontierData,
-      borderColor: 'green',
-      borderWidth: 3,
-      backgroundColor: 'transparent',
-      showLine: true,
-      pointRadius: 0,
-      datalabels: { display: false }
-    }
+    }))
   ];
 
   const chartData = { datasets };
