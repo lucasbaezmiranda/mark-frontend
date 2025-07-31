@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function MarkowitzForm({ onResults }) {
-  const [tickers, setTickers] = useState("AAPL, GOOGL, MSFT");
-  const [startDate, setStartDate] = useState("2023-01-01");
-  const [endDate, setEndDate] = useState("2023-01-31");
+  const [tickers, setTickers] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
 
   const tickersPool = [
     "BBAR","BMA","CEPU","CRESY","EDN","GGAL","IRS",
     "LOMA","MELI","PAM","SUPV","TEO","TGS","TS","YPF"
   ];
+
+  // ✅ Generar cartera aleatoria inicial al montar
+  useEffect(() => {
+    generarAleatoria();
+  }, []);
 
   const handleSubmit = async (e, auto=false) => {
     e && e.preventDefault();
@@ -41,8 +46,8 @@ export default function MarkowitzForm({ onResults }) {
     }
   };
 
-  // ✅ Botón para generar parámetros aleatorios
-  const handleRandom = () => {
+  // ✅ Función para generar tickers y fechas aleatorias
+  const generarAleatoria = () => {
     // 1) Seleccionar 3 tickers aleatorios
     const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, 3);
 
@@ -55,21 +60,14 @@ export default function MarkowitzForm({ onResults }) {
       past.getTime() + Math.random() * (now.getTime() - past.getTime())
     );
 
-    // Asegurar que tengamos 6 meses adelante
+    // Asegurar 6 meses adelante
     const randomEnd = new Date(randomStart);
     randomEnd.setMonth(randomStart.getMonth() + 6);
 
-    // Convertir a formato YYYY-MM-DD
-    const startStr = randomStart.toISOString().split("T")[0];
-    const endStr = randomEnd.toISOString().split("T")[0];
-
-    // Setear estado
+    // Setear valores
     setTickers(selected.join(", "));
-    setStartDate(startStr);
-    setEndDate(endStr);
-
-    // Ejecutar automáticamente
-    setTimeout(() => handleSubmit(null, true), 300);
+    setStartDate(randomStart.toISOString().split("T")[0]);
+    setEndDate(randomEnd.toISOString().split("T")[0]);
   };
 
   return (
@@ -86,14 +84,36 @@ export default function MarkowitzForm({ onResults }) {
         <label>Fecha de fin:</label><br />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
       </div>
-      <div style={{ marginTop: "10px" }}>
-        <button type="submit" disabled={loading}>
+      <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
+        <button 
+          type="submit" 
+          disabled={loading}
+          style={{ 
+            backgroundColor: "#1976d2", 
+            color: "white", 
+            padding: "8px 16px", 
+            border: "none", 
+            borderRadius: "5px", 
+            cursor: "pointer", 
+            fontWeight: "bold",
+            flex: 1
+          }}
+        >
           {loading ? "Generando..." : "Generar gráfico"}
         </button>
         <button 
           type="button" 
-          onClick={handleRandom} 
-          style={{ marginLeft: "10px", backgroundColor: "#1976d2", color: "white" }}
+          onClick={generarAleatoria} 
+          style={{ 
+            backgroundColor: "#1976d2", 
+            color: "white", 
+            padding: "8px 16px", 
+            border: "none", 
+            borderRadius: "5px", 
+            cursor: "pointer", 
+            fontWeight: "bold",
+            flex: 1
+          }}
         >
           🎲 Cartera Aleatoria
         </button>
