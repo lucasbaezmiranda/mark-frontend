@@ -17,34 +17,38 @@ export default function MarkowitzForm({ onResults }) {
   }, []);
 
   const handleSubmit = async (e, auto=false) => {
-    e && e.preventDefault();
-    setLoading(true);
+  e && e.preventDefault();
+  setLoading(true);
 
-    const payload = {
-      tickers: tickers.split(',').map(t => t.trim()),
-      start_date: startDate,
-      end_date: endDate
-    };
-
-    try {
-      const res = await fetch("https://spfwws4nrk.execute-api.us-east-1.amazonaws.com/v1/markowitz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const raw = await res.json();
-      const data = raw.body ? JSON.parse(raw.body) : raw;
-
-      onResults(data, data.csv_url);
-
-    } catch (err) {
-      alert("Error al obtener datos");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const payload = {
+    tickers: tickers.split(',').map(t => t.trim()),
+    start_date: startDate,
+    end_date: endDate
   };
+
+  try {
+    const res = await fetch("https://spfwws4nrk.execute-api.us-east-1.amazonaws.com/v1/markowitz", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const raw = await res.json();
+    const data = raw.body ? JSON.parse(raw.body) : raw;
+
+    onResults(data, data.csv_url);
+
+  } catch (err) {
+    alert("Error al obtener datos");
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ✅ Función para generar tickers y fechas aleatorias
 const generarAleatoria = () => {
