@@ -6,19 +6,13 @@ export default function MarkowitzForm({ onResults }) {
   const [endDate, setEndDate] = useState("2023-01-31");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const tickersPool = [
+    "BBAR","BMA","CEPU","CRESY","EDN","GGAL","IRS",
+    "LOMA","MELI","PAM","SUPV","TEO","TGS","TS","YPF"
+  ];
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    // Validar rango máximo de 1 año
-    const diffInDays = (end - start) / (1000 * 60 * 60 * 24);
-    if (diffInDays > 365) {
-      alert("El rango de fechas no puede superar 1 año.");
-      return;
-    }
-
+  const handleSubmit = async (e, auto=false) => {
+    e && e.preventDefault();
     setLoading(true);
 
     const payload = {
@@ -47,6 +41,37 @@ export default function MarkowitzForm({ onResults }) {
     }
   };
 
+  // ✅ Botón para generar parámetros aleatorios
+  const handleRandom = () => {
+    // 1) Seleccionar 3 tickers aleatorios
+    const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+    // 2) Generar fecha de inicio aleatoria (últimos 2 años)
+    const now = new Date();
+    const past = new Date();
+    past.setFullYear(now.getFullYear() - 2);
+
+    const randomStart = new Date(
+      past.getTime() + Math.random() * (now.getTime() - past.getTime())
+    );
+
+    // Asegurar que tengamos 6 meses adelante
+    const randomEnd = new Date(randomStart);
+    randomEnd.setMonth(randomStart.getMonth() + 6);
+
+    // Convertir a formato YYYY-MM-DD
+    const startStr = randomStart.toISOString().split("T")[0];
+    const endStr = randomEnd.toISOString().split("T")[0];
+
+    // Setear estado
+    setTickers(selected.join(", "));
+    setStartDate(startStr);
+    setEndDate(endStr);
+
+    // Ejecutar automáticamente
+    setTimeout(() => handleSubmit(null, true), 300);
+  };
+
   return (
     <form onSubmit={handleSubmit}>
       <div>
@@ -61,9 +86,18 @@ export default function MarkowitzForm({ onResults }) {
         <label>Fecha de fin:</label><br />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
       </div>
-      <button type="submit" disabled={loading} style={{ marginTop: "10px" }}>
-        {loading ? "Generando..." : "Generar gráfico"}
-      </button>
+      <div style={{ marginTop: "10px" }}>
+        <button type="submit" disabled={loading}>
+          {loading ? "Generando..." : "Generar gráfico"}
+        </button>
+        <button 
+          type="button" 
+          onClick={handleRandom} 
+          style={{ marginLeft: "10px", backgroundColor: "#1976d2", color: "white" }}
+        >
+          🎲 Cartera Aleatoria
+        </button>
+      </div>
     </form>
   );
 }
