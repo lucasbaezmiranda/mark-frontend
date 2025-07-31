@@ -16,6 +16,17 @@ export default function MarkowitzForm({ onResults }) {
     generarAleatoria();
   }, []);
 
+  // ✅ Función para formatear fecha a YYYY-MM-DD
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    // Si viene en formato DD/MM/YYYY
+    if (dateStr.includes("/")) {
+      const [day, month, year] = dateStr.split("/");
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+    return dateStr; // Ya está en YYYY-MM-DD
+  };
+
   const handleSubmit = async (e) => {
     e && e.preventDefault();
     setLoading(true);
@@ -27,8 +38,8 @@ export default function MarkowitzForm({ onResults }) {
 
     const payload = {
       tickers: cleanedTickers,
-      start_date: startDate,
-      end_date: endDate
+      start_date: formatDate(startDate),
+      end_date: formatDate(endDate)
     };
 
     console.log("📤 Enviando payload:", payload);
@@ -40,8 +51,7 @@ export default function MarkowitzForm({ onResults }) {
           "Content-Type": "application/json",
           "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
         },
-        // 👇 Ajuste clave para que la Lambda lo reciba igual que el test CLI
-        body: JSON.stringify({ body: JSON.stringify(payload) })
+        body: JSON.stringify(payload) // ✅ Ahora solo una vez
       });
 
       console.log("📥 Status respuesta:", res.status);
