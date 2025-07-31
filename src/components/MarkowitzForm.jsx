@@ -27,7 +27,7 @@ export default function MarkowitzForm({ onResults }) {
   };
 
   try {
-    const res = await fetch("https://spfwws4nrk.execute-api.us-east-1.amazonaws.com/v1/markowitz", {
+    const res = await fetch("https://5e1eqa5y6b.execute-api.us-east-1.amazonaws.com/v1/query", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
