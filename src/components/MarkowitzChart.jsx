@@ -7,8 +7,9 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend);
+ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartDataLabels);
 
 export default function MarkowitzChart({ data }) {
   // Datos Monte Carlo
@@ -17,10 +18,11 @@ export default function MarkowitzChart({ data }) {
     y: p.return
   }));
 
-  // Activos individuales
+  // Activos individuales con etiqueta (ticker)
   const singleAssets = data.single_assets.map(a => ({
     x: a.risk,
-    y: a.return
+    y: a.return,
+    ticker: a.ticker
   }));
 
   // Construir datasets
@@ -38,7 +40,15 @@ export default function MarkowitzChart({ data }) {
       backgroundColor: 'red',
       pointStyle: 'triangle',
       pointRadius: 6,
-      showLine: false
+      showLine: false,
+      datalabels: {
+        align: 'right',
+        anchor: 'end',
+        font: { weight: 'bold' },
+        formatter: function(value) {
+          return value.ticker;
+        }
+      }
     },
     ...data.pairs.map((pair, i) => ({
       label: `${pair.tickers[0]}-${pair.tickers[1]}`,
@@ -58,6 +68,10 @@ export default function MarkowitzChart({ data }) {
     maintainAspectRatio: false,
     plugins: {
       legend: { position: 'top' },
+      datalabels: {
+        display: true,
+        color: 'black'
+      },
       tooltip: {
         callbacks: {
           label: function(context) {
