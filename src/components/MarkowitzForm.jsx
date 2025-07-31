@@ -47,28 +47,35 @@ export default function MarkowitzForm({ onResults }) {
   };
 
   // ✅ Función para generar tickers y fechas aleatorias
-  const generarAleatoria = () => {
-    // 1) Seleccionar 3 tickers aleatorios
-    const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, 3);
+const generarAleatoria = () => {
+  // 1) Seleccionar 3 tickers aleatorios
+  const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, 3);
 
-    // 2) Generar fecha de inicio aleatoria (últimos 2 años)
-    const now = new Date();
-    const past = new Date();
-    past.setFullYear(now.getFullYear() - 2);
+  // 2) Hoy
+  const now = new Date();
 
-    const randomStart = new Date(
-      past.getTime() + Math.random() * (now.getTime() - past.getTime())
-    );
+  // 3) Fecha máxima para inicio = hoy - 6 meses
+  const maxStart = new Date();
+  maxStart.setMonth(now.getMonth() - 6);
 
-    // Asegurar 6 meses adelante
-    const randomEnd = new Date(randomStart);
-    randomEnd.setMonth(randomStart.getMonth() + 6);
+  // 4) Fecha mínima para inicio = hoy - 2 años
+  const minStart = new Date();
+  minStart.setFullYear(now.getFullYear() - 2);
 
-    // Setear valores
-    setTickers(selected.join(", "));
-    setStartDate(randomStart.toISOString().split("T")[0]);
-    setEndDate(randomEnd.toISOString().split("T")[0]);
-  };
+  // 5) Generar fecha aleatoria entre minStart y maxStart
+  const randomStart = new Date(
+    minStart.getTime() + Math.random() * (maxStart.getTime() - minStart.getTime())
+  );
+
+  // 6) Fecha de fin = inicio + 6 meses
+  const randomEnd = new Date(randomStart);
+  randomEnd.setMonth(randomStart.getMonth() + 6);
+
+  // 7) Setear estados
+  setTickers(selected.join(", "));
+  setStartDate(randomStart.toISOString().split("T")[0]);
+  setEndDate(randomEnd.toISOString().split("T")[0]);
+};
 
   return (
     <form onSubmit={handleSubmit}>
