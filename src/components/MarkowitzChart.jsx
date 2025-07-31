@@ -25,6 +25,14 @@ export default function MarkowitzChart({ data }) {
     ticker: a.ticker
   }));
 
+  // Frontera eficiente óptima
+  const frontierData = data.efficient_frontier
+    ? data.efficient_frontier.risks.map((r, idx) => ({
+        x: r,
+        y: data.efficient_frontier.returns[idx]
+      }))
+    : [];
+
   // Construir datasets
   const datasets = [
     {
@@ -33,7 +41,7 @@ export default function MarkowitzChart({ data }) {
       backgroundColor: 'blue',
       pointRadius: 4,
       showLine: false,
-      datalabels: { display: false } // ❌ Sin etiquetas
+      datalabels: { display: false }
     },
     {
       label: 'Activos individuales',
@@ -43,7 +51,7 @@ export default function MarkowitzChart({ data }) {
       pointRadius: 6,
       showLine: false,
       datalabels: {
-        display: true,           // ✅ Solo aquí mostramos etiquetas
+        display: true,
         align: 'right',
         anchor: 'end',
         font: { weight: 'bold' },
@@ -56,12 +64,22 @@ export default function MarkowitzChart({ data }) {
       label: `${pair.tickers[0]}-${pair.tickers[1]}`,
       data: pair.risks.map((r, idx) => ({ x: r, y: pair.returns[idx] })),
       borderColor: `hsl(${(i * 60) % 360}, 70%, 40%)`,
-      borderWidth: 1.5,
+      borderWidth: 1,
       backgroundColor: 'transparent',
       showLine: true,
       pointRadius: 0,
-      datalabels: { display: false } // ❌ Sin etiquetas
-    }))
+      datalabels: { display: false }
+    })),
+    {
+      label: 'Frontera eficiente óptima',
+      data: frontierData,
+      borderColor: 'green',
+      borderWidth: 3,
+      backgroundColor: 'transparent',
+      showLine: true,
+      pointRadius: 0,
+      datalabels: { display: false }
+    }
   ];
 
   const chartData = { datasets };
@@ -71,7 +89,7 @@ export default function MarkowitzChart({ data }) {
     maintainAspectRatio: false,
     plugins: {
       legend: { position: 'top' },
-      datalabels: { display: false }, // ❌ Desactivar globalmente
+      datalabels: { display: false },
       tooltip: {
         callbacks: {
           label: function(context) {
