@@ -16,70 +16,80 @@ export default function MarkowitzForm({ onResults }) {
     generarAleatoria();
   }, []);
 
-  const handleSubmit = async (e, auto=false) => {
-  e && e.preventDefault();
-  setLoading(true);
+  const handleSubmit = async (e, auto = false) => {
+    e && e.preventDefault();
+    setLoading(true);
 
-  const payload = {
-    tickers: tickers.split(',').map(t => t.trim()),
-    start_date: startDate,
-    end_date: endDate
+    // ✅ Limpieza de tickers para evitar espacios o valores vacíos
+    const cleanedTickers = tickers
+      .split(',')
+      .map(t => t.trim().toUpperCase())
+      .filter(t => t !== "");
+
+    const payload = {
+      tickers: cleanedTickers,
+      start_date: startDate,
+      end_date: endDate
+    };
+
+    console.log("📤 Enviando payload:", payload);
+
+    try {
+      const res = await fetch("https://5e1eqa5y6b.execute-api.us-east-1.amazonaws.com/v1/query", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log("📥 Status respuesta:", res.status);
+
+      const raw = await res.json();
+      console.log("📥 Respuesta cruda:", raw);
+
+      const data = raw.body ? JSON.parse(raw.body) : raw;
+      onResults(data, data.csv_url);
+
+    } catch (err) {
+      alert("Error al obtener datos");
+      console.error("❌ Error fetch:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  try {
-    const res = await fetch("https://5e1eqa5y6b.execute-api.us-east-1.amazonaws.com/v1/query", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const raw = await res.json();
-    const data = raw.body ? JSON.parse(raw.body) : raw;
-
-    onResults(data, data.csv_url);
-
-  } catch (err) {
-    alert("Error al obtener datos");
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
   // ✅ Función para generar tickers y fechas aleatorias
-const generarAleatoria = () => {
-  // 1) Seleccionar 3 tickers aleatorios
-  const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, 3);
+  const generarAleatoria = () => {
+    // 1) Seleccionar 3 tickers aleatorios
+    const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, 3);
 
-  // 2) Hoy
-  const now = new Date();
+    // 2) Hoy
+    const now = new Date();
 
-  // 3) Fecha máxima para inicio = hoy - 6 meses
-  const maxStart = new Date();
-  maxStart.setMonth(now.getMonth() - 6);
+    // 3) Fecha máxima para inicio = hoy - 6 meses
+    const maxStart = new Date();
+    maxStart.setMonth(now.getMonth() - 6);
 
-  // 4) Fecha mínima para inicio = hoy - 2 años
-  const minStart = new Date();
-  minStart.setFullYear(now.getFullYear() - 2);
+    // 4) Fecha mínima para inicio = hoy - 2 años
+    const minStart = new Date();
+    minStart.setFullYear(now.getFullYear() - 2);
 
-  // 5) Generar fecha aleatoria entre minStart y maxStart
-  const randomStart = new Date(
-    minStart.getTime() + Math.random() * (maxStart.getTime() - minStart.getTime())
-  );
+    // 5) Generar fecha aleatoria entre minStart y maxStart
+    const randomStart = new Date(
+      minStart.getTime() + Math.random() * (maxStart.getTime() - minStart.getTime())
+    );
 
-  // 6) Fecha de fin = inicio + 6 meses
-  const randomEnd = new Date(randomStart);
-  randomEnd.setMonth(randomStart.getMonth() + 6);
+    // 6) Fecha de fin = inicio + 6 meses
+    const randomEnd = new Date(randomStart);
+    randomEnd.setMonth(randomStart.getMonth() + 6);
 
-  // 7) Setear estados
-  setTickers(selected.join(", "));
-  setStartDate(randomStart.toISOString().split("T")[0]);
-  setEndDate(randomEnd.toISOString().split("T")[0]);
-};
+    // 7) Setear estados
+    setTickers(selected.join(", "));
+    setStartDate(randomStart.toISOString().split("T")[0]);
+    setEndDate(randomEnd.toISOString().split("T")[0]);
+  };
 
   return (
     <form onSubmit={handleSubmit}>
