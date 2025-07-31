@@ -11,7 +11,7 @@ import {
 ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 export default function MarkowitzChart({ data }) {
-  // Datos principales: Monte Carlo
+  // Datos Monte Carlo
   const portfolios = data.portfolios.map(p => ({
     x: p.risk,
     y: p.return
@@ -23,7 +23,7 @@ export default function MarkowitzChart({ data }) {
     y: a.return
   }));
 
-  // Preparar datasets
+  // Construir datasets
   const datasets = [
     {
       label: 'Carteras aleatorias',
@@ -43,20 +43,19 @@ export default function MarkowitzChart({ data }) {
     ...data.pairs.map((pair, i) => ({
       label: `${pair.tickers[0]}-${pair.tickers[1]}`,
       data: pair.risks.map((r, idx) => ({ x: r, y: pair.returns[idx] })),
-      borderColor: 'rgba(0,0,0,0.4)',
-      borderWidth: 1,
+      borderColor: `hsl(${(i * 60) % 360}, 70%, 40%)`,
+      borderWidth: 1.5,
       backgroundColor: 'transparent',
       showLine: true,
       pointRadius: 0
     }))
   ];
 
-  const chartData = {
-    datasets
-  };
+  const chartData = { datasets };
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { position: 'top' },
       tooltip: {
@@ -76,8 +75,8 @@ export default function MarkowitzChart({ data }) {
   };
 
   return (
-    <div style={{ width: "100%", height: "100%" }}>
-      <Scatter data={chartData} options={options} height={500} />
+    <div style={{ width: "100%", minWidth: "800px", height: "500px" }}>
+      <Scatter data={chartData} options={options} />
     </div>
   );
 }

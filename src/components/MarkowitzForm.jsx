@@ -8,6 +8,17 @@ export default function MarkowitzForm({ onResults }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Validar rango máximo de 1 año
+    const diffInDays = (end - start) / (1000 * 60 * 60 * 24);
+    if (diffInDays > 365) {
+      alert("El rango de fechas no puede superar 1 año.");
+      return;
+    }
+
     setLoading(true);
 
     const payload = {
@@ -50,7 +61,7 @@ export default function MarkowitzForm({ onResults }) {
         <label>Fecha de fin:</label><br />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
       </div>
-      <button type="submit" disabled={loading}>
+      <button type="submit" disabled={loading} style={{ marginTop: "10px" }}>
         {loading ? "Generando..." : "Generar gráfico"}
       </button>
     </form>
