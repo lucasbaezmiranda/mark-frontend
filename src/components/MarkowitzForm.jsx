@@ -7,7 +7,6 @@ export default function MarkowitzForm({ onResults }) {
   const [loading, setLoading] = useState(false);
   const [calculateFrontier, setCalculateFrontier] = useState(false);
   const [riskFree, setRiskFree] = useState(0.03);
-  const [showCML, setShowCML] = useState(true); // ✅ Nuevo estado para CAPM/CML
 
   const tickersPool = [
     "BBAR","BMA","CEPU","CRESY","EDN","GGAL","IRS",
@@ -57,8 +56,7 @@ export default function MarkowitzForm({ onResults }) {
       const raw = await res.json();
       const data = raw.body ? JSON.parse(raw.body) : raw;
 
-      // ✅ Pasamos también la preferencia de mostrar CML
-      onResults(data, data.csv_url, riskFree, showCML);
+      onResults(data, data.csv_url, riskFree);
 
     } catch (err) {
       alert("Error al obtener datos");
@@ -128,17 +126,6 @@ export default function MarkowitzForm({ onResults }) {
           />
         </div>
       )}
-
-      {/* ✅ Checkbox para mostrar CAPM/CML */}
-      <div style={{ marginTop: "10px" }}>
-        <label>
-          <input
-            type="checkbox"
-            checked={showCML}
-            onChange={e => setShowCML(e.target.checked)}
-          /> Mostrar CAPM (CML)
-        </label>
-      </div>
 
       <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
         <button 

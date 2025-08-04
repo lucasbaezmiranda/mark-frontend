@@ -18,13 +18,14 @@ export default function MarkowitzChart({ data }) {
     y: p.return
   }));
 
-  // Activos individuales
+  // Activos individuales (con nombre/ticker para etiquetas)
   const singleAssets = data.single_assets.map(a => ({
     x: a.risk,
-    y: a.return
+    y: a.return,
+    label: a.ticker || a.name || `Activo`
   }));
 
-  // Frontera eficiente (sin multiplicar)
+  // Frontera eficiente
   const frontier = data.efficient_frontier
     ? data.efficient_frontier.risks.map((r, idx) => ({ 
         x: r, 
@@ -32,7 +33,7 @@ export default function MarkowitzChart({ data }) {
       }))
     : [];
 
-  // Punto máximo Sharpe (sin multiplicar)
+  // Punto máximo Sharpe
   const maxSharpe = data.max_sharpe
     ? { x: data.max_sharpe.risk, y: data.max_sharpe.return }
     : null;
@@ -49,7 +50,13 @@ export default function MarkowitzChart({ data }) {
         label: 'Activos individuales',
         data: singleAssets,
         backgroundColor: 'rgba(255, 99, 132, 0.7)',
-        pointRadius: 5
+        pointRadius: 5,
+        datalabels: {
+          align: 'top',
+          anchor: 'end',
+          font: { weight: 'bold' },
+          formatter: (value) => value.label || ''
+        }
       },
       {
         label: 'Frontera Eficiente',
@@ -74,7 +81,7 @@ export default function MarkowitzChart({ data }) {
     plugins: {
       tooltip: { enabled: true },
       legend: { position: 'top' },
-      datalabels: { display: false }
+      datalabels: { display: true }
     },
     scales: {
       x: { title: { display: true, text: 'Riesgo (σ)' } },

@@ -6,7 +6,6 @@ export default function MarkowitzContainer() {
   const [chartData, setChartData] = useState(null);
   const [csvUrl, setCsvUrl] = useState(null);
   const [riskFreeRate, setRiskFreeRate] = useState(0);
-  const [showCML, setShowCML] = useState(true);
 
   return (
     <div style={{
@@ -19,11 +18,10 @@ export default function MarkowitzContainer() {
       {/* Formulario */}
       <div style={{ flex: "1", maxWidth: "300px" }}>
         <MarkowitzForm 
-          onResults={(data, csv, rf, cml) => {   
+          onResults={(data, csv, rf) => {   
             setChartData(data);
             setCsvUrl(csv);
             setRiskFreeRate(rf);
-            setShowCML(cml);
           }} 
         />
 
@@ -60,8 +58,7 @@ export default function MarkowitzContainer() {
         {chartData && (
           <MarkowitzChart 
             data={chartData} 
-            riskFreeRate={riskFreeRate} 
-            showCML={showCML}
+            riskFreeRate={riskFreeRate}
           />
         )}
       </div>
