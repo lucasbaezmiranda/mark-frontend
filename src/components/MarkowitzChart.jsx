@@ -14,33 +14,25 @@ ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartD
 export default function MarkowitzChart({ data }) {
   // Datos Monte Carlo
   const portfolios = data.portfolios.map(p => ({
-    x: p.risk,
-    y: p.return
+    x: p.risk * 12,
+    y: p.return * 12
   }));
 
-  // Activos individuales con etiqueta
-  const singleAssets = data.single_assets.map(a => ({
-    x: a.risk,
-    y: a.return,
-    ticker: a.ticker
-  }));
-
-  // Frontera eficiente (acepta "efficient_frontier" o "frontier")
-  const rawFrontier = data.frontier || data.efficient_frontier || null;
-  const frontier = rawFrontier
-    ? rawFrontier.risks.map((r, idx) => ({ x: r, y: rawFrontier.returns[idx] }))
+  // Frontera eficiente
+  const frontier = data.frontier
+    ? data.frontier.risks.map((r, idx) => ({ x: r * 12, y: data.frontier.returns[idx] * 12 }))
     : [];
 
-  // Punto máximo Sharpe (si existe)
+  // Punto máximo Sharpe
   const maxSharpe = data.max_sharpe_point
-    ? { x: data.max_sharpe_point.risk, y: data.max_sharpe_point.return }
+    ? { x: data.max_sharpe_point.risk * 12, y: data.max_sharpe_point.return * 12 }
     : null;
 
-  // Línea CML (si existe risk_free y maxSharpe)
+  // Línea CML
   let cmlLine = [];
   if (data.risk_free !== undefined && maxSharpe) {
     cmlLine = [
-      { x: 0, y: data.risk_free },
+      { x: 0, y: data.risk_free * 12 },
       { x: maxSharpe.x, y: maxSharpe.y }
     ];
   }
@@ -55,33 +47,6 @@ export default function MarkowitzChart({ data }) {
       showLine: false,
       datalabels: { display: false }
     },
-    {
-      label: 'Activos individuales',
-      data: singleAssets,
-      backgroundColor: 'red',
-      pointStyle: 'triangle',
-      pointRadius: 6,
-      showLine: false,
-      datalabels: {
-        display: true,
-        align: 'right',
-        anchor: 'end',
-        font: { weight: 'bold' },
-        formatter: function (value) {
-          return value.ticker;
-        }
-      }
-    },
-    ...data.pairs.map((pair, i) => ({
-      label: `${pair.tickers[0]}-${pair.tickers[1]}`,
-      data: pair.risks.map((r, idx) => ({ x: r, y: pair.returns[idx] })),
-      borderColor: `hsl(${(i * 60) % 360}, 70%, 40%)`,
-      borderWidth: 1,
-      backgroundColor: 'transparent',
-      showLine: true,
-      pointRadius: 0,
-      datalabels: { display: false }
-    })),
     frontier.length > 0 && {
       label: 'Frontera eficiente',
       data: frontier,
@@ -118,7 +83,7 @@ export default function MarkowitzChart({ data }) {
       pointRadius: 0,
       datalabels: { display: false }
     }
-  ].filter(Boolean); // elimina datasets nulos
+  ].filter(Boolean);
 
   const chartData = { datasets };
 
