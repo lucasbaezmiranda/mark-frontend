@@ -12,23 +12,35 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartDataLabels);
 
 export default function MarkowitzChart({ data }) {
+  // Carteras Monte Carlo (ya vienen anualizadas)
   const portfolios = data.portfolios.map(p => ({
-    x: p.risk * 12,
-    y: p.return * 12
+    x: p.risk,
+    y: p.return
   }));
 
+  // Activos individuales (ya vienen anualizados)
+  const singleAssets = data.single_assets.map(a => ({
+    x: a.risk,
+    y: a.return
+  }));
+
+  // Frontera eficiente (convertir a anual)
   const frontier = data.efficient_frontier
-    ? data.efficient_frontier.risks.map((r, idx) => ({ x: r * 12, y: data.efficient_frontier.returns[idx] * 12 }))
+    ? data.efficient_frontier.risks.map((r, idx) => ({ 
+        x: r * 12, 
+        y: data.efficient_frontier.returns[idx] * 12 
+      }))
     : [];
 
+  // Punto máximo Sharpe (convertir a anual)
   const maxSharpe = data.max_sharpe
-    ? { x: data.max_sharpe.risk * 12, y: data.max_sharpe.return * 12 }
+    ? { 
+        x: data.max_sharpe.risk * 12, 
+        y: data.max_sharpe.return * 12 
+      }
     : null;
 
-  const singleAssets = data.single_assets
-    ? data.single_assets.map(a => ({ x: a.risk * 12, y: a.return * 12, label: a.ticker }))
-    : [];
-
+  // Línea CML
   let cmlLine = [];
   if (data.risk_free !== undefined && maxSharpe) {
     cmlLine = [
@@ -37,6 +49,7 @@ export default function MarkowitzChart({ data }) {
     ];
   }
 
+  // Construcción datasets
   const datasets = [
     {
       label: 'Carteras aleatorias',
@@ -45,6 +58,21 @@ export default function MarkowitzChart({ data }) {
       pointRadius: 4,
       showLine: false,
       datalabels: { display: false }
+    },
+    {
+      label: 'Activos individuales',
+      data: singleAssets,
+      backgroundColor: 'red',
+      pointStyle: 'triangle',
+      pointRadius: 6,
+      showLine: false,
+      datalabels: {
+        display: true,
+        align: 'top',
+        anchor: 'end',
+        font: { weight: 'bold' },
+        formatter: (value, ctx) => data.single_assets[ctx.dataIndex].ticker
+      }
     },
     frontier.length > 0 && {
       label: 'Frontera eficiente',
@@ -81,21 +109,6 @@ export default function MarkowitzChart({ data }) {
       showLine: true,
       pointRadius: 0,
       datalabels: { display: false }
-    },
-    singleAssets.length > 0 && {
-      label: 'Activos individuales',
-      data: singleAssets,
-      backgroundColor: 'red',
-      pointStyle: 'triangle',
-      pointRadius: 7,
-      showLine: false,
-      datalabels: {
-        display: true,
-        align: 'right',
-        anchor: 'start',
-        font: { weight: 'bold' },
-        formatter: (value) => value.label
-      }
     }
   ].filter(Boolean);
 
