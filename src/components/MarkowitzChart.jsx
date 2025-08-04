@@ -25,9 +25,10 @@ export default function MarkowitzChart({ data }) {
     ticker: a.ticker
   }));
 
-  // Frontera eficiente (si existe)
-  const frontier = data.frontier
-    ? data.frontier.risks.map((r, idx) => ({ x: r, y: data.frontier.returns[idx] }))
+  // Frontera eficiente (acepta "efficient_frontier" o "frontier")
+  const rawFrontier = data.frontier || data.efficient_frontier || null;
+  const frontier = rawFrontier
+    ? rawFrontier.risks.map((r, idx) => ({ x: r, y: rawFrontier.returns[idx] }))
     : [];
 
   // Punto máximo Sharpe (si existe)
