@@ -61,7 +61,7 @@ export default function MarkowitzForm({ onResults }) {
       console.log("📥 Respuesta cruda:", raw);
 
       const data = raw.body ? JSON.parse(raw.body) : raw;
-      onResults(data, data.csv_url);
+      onResults(data, data.csv_url, riskFree);
 
     } catch (err) {
       alert("Error al obtener datos");

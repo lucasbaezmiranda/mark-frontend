@@ -11,7 +11,7 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartDataLabels);
 
-export default function MarkowitzChart({ data }) {
+export default function MarkowitzChart({ data, riskFreeRate }) {
   const portfolios = data.portfolios.map(p => ({
     x: p.risk,
     y: p.return
@@ -36,10 +36,11 @@ export default function MarkowitzChart({ data }) {
       }
     : null;
 
+  // ✅ Usamos la tasa libre de riesgo del frontend
   let cmlLine = [];
-  if (data.risk_free !== undefined && maxSharpe) {
+  if (riskFreeRate !== undefined && maxSharpe) {
     cmlLine = [
-      { x: 0, y: data.risk_free },
+      { x: 0, y: riskFreeRate },
       { x: maxSharpe.x, y: maxSharpe.y }
     ];
   }
