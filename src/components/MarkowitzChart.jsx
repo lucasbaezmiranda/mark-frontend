@@ -44,7 +44,10 @@ export default function MarkowitzChart({ data }) {
         label: 'Carteras Monte Carlo',
         data: portfolios,
         backgroundColor: 'rgba(0, 123, 255, 0.4)',
-        pointRadius: 4
+        pointRadius: 4,
+        datalabels: {
+          display: false // ❌ Sin etiquetas en Monte Carlo
+        }
       },
       {
         label: 'Activos individuales',
@@ -52,6 +55,7 @@ export default function MarkowitzChart({ data }) {
         backgroundColor: 'rgba(255, 99, 132, 0.7)',
         pointRadius: 5,
         datalabels: {
+          display: true, // ✅ Solo este dataset muestra etiquetas
           align: 'top',
           anchor: 'end',
           font: { weight: 'bold' },
@@ -65,13 +69,19 @@ export default function MarkowitzChart({ data }) {
         borderWidth: 2,
         showLine: true,
         fill: false,
-        pointRadius: 0
+        pointRadius: 0,
+        datalabels: {
+          display: false
+        }
       },
       {
         label: 'Máx Sharpe',
         data: maxSharpe ? [maxSharpe] : [],
         backgroundColor: 'gold',
-        pointRadius: 6
+        pointRadius: 6,
+        datalabels: {
+          display: false
+        }
       }
     ]
   };
@@ -81,7 +91,7 @@ export default function MarkowitzChart({ data }) {
     plugins: {
       tooltip: { enabled: true },
       legend: { position: 'top' },
-      datalabels: { display: true }
+      datalabels: { display: false } // 🔹 Default global (desactivado)
     },
     scales: {
       x: { title: { display: true, text: 'Riesgo (σ)' } },
