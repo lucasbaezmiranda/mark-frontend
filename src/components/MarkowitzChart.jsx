@@ -11,129 +11,95 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartDataLabels);
 
-export default function MarkowitzChart({ data, riskFreeRate }) {
+export default function MarkowitzChart({ data, riskFreeRate, showCML }) {
+  // Carteras Monte Carlo
   const portfolios = data.portfolios.map(p => ({
     x: p.risk,
     y: p.return
   }));
 
+  // Activos individuales
   const singleAssets = data.single_assets.map(a => ({
     x: a.risk,
     y: a.return
   }));
 
+  // Frontera eficiente (convertir a anual)
   const frontier = data.efficient_frontier
     ? data.efficient_frontier.risks.map((r, idx) => ({ 
-        x: r, 
-        y: data.efficient_frontier.returns[idx] 
+        x: r * 12, 
+        y: data.efficient_frontier.returns[idx] * 12 
       }))
     : [];
 
+  // Punto máximo Sharpe (convertir a anual)
   const maxSharpe = data.max_sharpe
-    ? { 
-        x: data.max_sharpe.risk, 
-        y: data.max_sharpe.return 
-      }
+    ? { x: data.max_sharpe.risk * 12, y: data.max_sharpe.return * 12 }
     : null;
 
-  // ✅ Usamos la tasa libre de riesgo del frontend
-  let cmlLine = [];
-  if (riskFreeRate !== undefined && maxSharpe) {
-    cmlLine = [
-      { x: 0, y: riskFreeRate },
-      { x: maxSharpe.x, y: maxSharpe.y }
-    ];
-  }
+  // ✅ Línea CAPM/CML solo si está habilitada
+  const cml = (showCML && maxSharpe)
+    ? [
+        { x: 0, y: riskFreeRate },
+        { x: maxSharpe.x, y: maxSharpe.y }
+      ]
+    : [];
 
-  const datasets = [
-    {
-      label: 'Carteras aleatorias',
-      data: portfolios,
-      backgroundColor: 'blue',
-      pointRadius: 4,
-      showLine: false,
-      datalabels: { display: false }
-    },
-    {
-      label: 'Activos individuales',
-      data: singleAssets,
-      backgroundColor: 'red',
-      pointStyle: 'triangle',
-      pointRadius: 6,
-      showLine: false,
-      datalabels: {
-        display: true,
-        align: 'top',
-        anchor: 'end',
-        font: { weight: 'bold' },
-        formatter: (value, ctx) => data.single_assets[ctx.dataIndex].ticker
-      }
-    },
-    frontier.length > 0 && {
-      label: 'Frontera eficiente',
-      data: frontier,
-      borderColor: 'green',
-      borderWidth: 2,
-      backgroundColor: 'transparent',
-      showLine: true,
-      pointRadius: 0,
-      datalabels: { display: false }
-    },
-    maxSharpe && {
-      label: 'Máx Sharpe',
-      data: [maxSharpe],
-      backgroundColor: 'orange',
-      pointStyle: 'star',
-      pointRadius: 8,
-      showLine: false,
-      datalabels: {
-        display: true,
-        align: 'left',
-        anchor: 'end',
-        font: { weight: 'bold' },
-        formatter: () => "Max Sharpe"
-      }
-    },
-    cmlLine.length > 0 && {
-      label: 'Capital Market Line',
-      data: cmlLine,
-      borderColor: 'purple',
-      borderDash: [5, 5],
-      borderWidth: 1.5,
-      backgroundColor: 'transparent',
-      showLine: true,
-      pointRadius: 0,
-      datalabels: { display: false }
-    }
-  ].filter(Boolean);
-
-  const chartData = { datasets };
+  const chartData = {
+    datasets: [
+      {
+        label: 'Carteras Monte Carlo',
+        data: portfolios,
+        backgroundColor: 'rgba(0, 123, 255, 0.4)',
+        pointRadius: 4
+      },
+      {
+        label: 'Activos individuales',
+        data: singleAssets,
+        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+        pointRadius: 5
+      },
+      {
+        label: 'Frontera Eficiente',
+        data: frontier,
+        borderColor: 'green',
+        borderWidth: 2,
+        showLine: true,
+        fill: false,
+        pointRadius: 0
+      },
+      {
+        label: 'Máx Sharpe',
+        data: maxSharpe ? [maxSharpe] : [],
+        backgroundColor: 'gold',
+        pointRadius: 6
+      },
+      ...(showCML && cml.length > 0
+        ? [{
+            label: 'CAPM (CML)',
+            data: cml,
+            borderColor: 'orange',
+            borderWidth: 2,
+            showLine: true,
+            pointRadius: 0,
+            borderDash: [5, 5]
+          }]
+        : [])
+    ]
+  };
 
   const options = {
     responsive: true,
-    maintainAspectRatio: false,
     plugins: {
+      tooltip: { enabled: true },
       legend: { position: 'top' },
-      datalabels: { display: false },
-      tooltip: {
-        callbacks: {
-          label: function (context) {
-            const x = context.raw.x.toFixed(4);
-            const y = context.raw.y.toFixed(4);
-            return ` Riesgo: ${x} | Retorno: ${y}`;
-          }
-        }
-      }
+      datalabels: { display: false }
     },
     scales: {
-      x: { title: { display: true, text: "Riesgo (σ anual)" } },
-      y: { title: { display: true, text: "Retorno esperado anual" } }
+      x: { title: { display: true, text: 'Riesgo (σ anualizado)' } },
+      y: { title: { display: true, text: 'Retorno esperado (anualizado)' } }
     }
   };
 
-  return (
-    <div style={{ width: "100%", minWidth: "800px", height: "500px" }}>
-      <Scatter data={chartData} options={options} />
-    </div>
-  );
+  return <Scatter data={chartData} options={options} />;
 }
