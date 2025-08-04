@@ -12,44 +12,38 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartDataLabels);
 
 export default function MarkowitzChart({ data }) {
-  // Carteras Monte Carlo (ya vienen anualizadas)
   const portfolios = data.portfolios.map(p => ({
     x: p.risk,
     y: p.return
   }));
 
-  // Activos individuales (ya vienen anualizados)
   const singleAssets = data.single_assets.map(a => ({
     x: a.risk,
     y: a.return
   }));
 
-  // Frontera eficiente (convertir a anual)
   const frontier = data.efficient_frontier
     ? data.efficient_frontier.risks.map((r, idx) => ({ 
-        x: r * 12, 
-        y: data.efficient_frontier.returns[idx] * 12 
+        x: r, 
+        y: data.efficient_frontier.returns[idx] 
       }))
     : [];
 
-  // Punto máximo Sharpe (convertir a anual)
   const maxSharpe = data.max_sharpe
     ? { 
-        x: data.max_sharpe.risk * 12, 
-        y: data.max_sharpe.return * 12 
+        x: data.max_sharpe.risk, 
+        y: data.max_sharpe.return 
       }
     : null;
 
-  // Línea CML
   let cmlLine = [];
   if (data.risk_free !== undefined && maxSharpe) {
     cmlLine = [
-      { x: 0, y: data.risk_free * 12 },
+      { x: 0, y: data.risk_free },
       { x: maxSharpe.x, y: maxSharpe.y }
     ];
   }
 
-  // Construcción datasets
   const datasets = [
     {
       label: 'Carteras aleatorias',
