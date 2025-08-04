@@ -11,7 +11,7 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartDataLabels);
 
-export default function MarkowitzChart({ data, riskFreeRate, showCML }) {
+export default function MarkowitzChart({ data }) {
   // Carteras Monte Carlo
   const portfolios = data.portfolios.map(p => ({
     x: p.risk,
@@ -24,26 +24,18 @@ export default function MarkowitzChart({ data, riskFreeRate, showCML }) {
     y: a.return
   }));
 
-  // Frontera eficiente (convertir a anual)
+  // Frontera eficiente (sin multiplicar)
   const frontier = data.efficient_frontier
     ? data.efficient_frontier.risks.map((r, idx) => ({ 
-        x: r * 12, 
-        y: data.efficient_frontier.returns[idx] * 12 
+        x: r, 
+        y: data.efficient_frontier.returns[idx]
       }))
     : [];
 
-  // Punto máximo Sharpe (convertir a anual)
+  // Punto máximo Sharpe (sin multiplicar)
   const maxSharpe = data.max_sharpe
-    ? { x: data.max_sharpe.risk * 12, y: data.max_sharpe.return * 12 }
+    ? { x: data.max_sharpe.risk, y: data.max_sharpe.return }
     : null;
-
-  // ✅ Línea CAPM/CML solo si está habilitada
-  const cml = (showCML && maxSharpe)
-    ? [
-        { x: 0, y: riskFreeRate },
-        { x: maxSharpe.x, y: maxSharpe.y }
-      ]
-    : [];
 
   const chartData = {
     datasets: [
@@ -73,18 +65,7 @@ export default function MarkowitzChart({ data, riskFreeRate, showCML }) {
         data: maxSharpe ? [maxSharpe] : [],
         backgroundColor: 'gold',
         pointRadius: 6
-      },
-      ...(showCML && cml.length > 0
-        ? [{
-            label: 'CAPM (CML)',
-            data: cml,
-            borderColor: 'orange',
-            borderWidth: 2,
-            showLine: true,
-            pointRadius: 0,
-            borderDash: [5, 5]
-          }]
-        : [])
+      }
     ]
   };
 
@@ -96,8 +77,8 @@ export default function MarkowitzChart({ data, riskFreeRate, showCML }) {
       datalabels: { display: false }
     },
     scales: {
-      x: { title: { display: true, text: 'Riesgo (σ anualizado)' } },
-      y: { title: { display: true, text: 'Retorno esperado (anualizado)' } }
+      x: { title: { display: true, text: 'Riesgo (σ)' } },
+      y: { title: { display: true, text: 'Retorno esperado' } }
     }
   };
 

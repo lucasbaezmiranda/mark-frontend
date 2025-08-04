@@ -6,7 +6,7 @@ export default function MarkowitzContainer() {
   const [chartData, setChartData] = useState(null);
   const [csvUrl, setCsvUrl] = useState(null);
   const [riskFreeRate, setRiskFreeRate] = useState(0);
-  const [showCML, setShowCML] = useState(true); // ✅ Estado para CML
+  const [showCML, setShowCML] = useState(true);
 
   return (
     <div style={{
@@ -14,9 +14,6 @@ export default function MarkowitzContainer() {
       gap: "30px",
       alignItems: "flex-start",
       width: "100%",
-      backgroundColor: "#121212", // ✅ Fondo modo oscuro
-      color: "#ffffff",            // ✅ Texto claro
-      minHeight: "100vh",
       padding: "20px"
     }}>
       {/* Formulario */}
@@ -26,7 +23,7 @@ export default function MarkowitzContainer() {
             setChartData(data);
             setCsvUrl(csv);
             setRiskFreeRate(rf);
-            setShowCML(cml); // ✅ Capturamos la preferencia
+            setShowCML(cml);
           }} 
         />
 
@@ -37,7 +34,6 @@ export default function MarkowitzContainer() {
               href={csvUrl} 
               target="_blank" 
               rel="noopener noreferrer"
-              style={{ color: "#90caf9" }}
             >
               📥 Descargar CSV
             </a>
@@ -60,12 +56,12 @@ export default function MarkowitzContainer() {
       </div>
 
       {/* Gráfico */}
-      <div style={{ flex: "4", minWidth: "800px", minHeight: "500px", backgroundColor: "#1e1e1e", padding: "10px", borderRadius: "8px" }}>
+      <div style={{ flex: "4", minWidth: "800px", minHeight: "500px", padding: "10px" }}>
         {chartData && (
           <MarkowitzChart 
             data={chartData} 
             riskFreeRate={riskFreeRate} 
-            showCML={showCML}   // ✅ Pasamos showCML
+            showCML={showCML}
           />
         )}
       </div>
