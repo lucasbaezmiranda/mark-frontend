@@ -25,6 +25,25 @@ export default function MarkowitzChart({ data }) {
     ticker: a.ticker
   }));
 
+  // Frontera eficiente (si existe)
+  const frontier = data.frontier
+    ? data.frontier.risks.map((r, idx) => ({ x: r, y: data.frontier.returns[idx] }))
+    : [];
+
+  // Punto máximo Sharpe (si existe)
+  const maxSharpe = data.max_sharpe_point
+    ? { x: data.max_sharpe_point.risk, y: data.max_sharpe_point.return }
+    : null;
+
+  // Línea CML (si existe risk_free y maxSharpe)
+  let cmlLine = [];
+  if (data.risk_free !== undefined && maxSharpe) {
+    cmlLine = [
+      { x: 0, y: data.risk_free },
+      { x: maxSharpe.x, y: maxSharpe.y }
+    ];
+  }
+
   // Construir datasets
   const datasets = [
     {
@@ -47,7 +66,7 @@ export default function MarkowitzChart({ data }) {
         align: 'right',
         anchor: 'end',
         font: { weight: 'bold' },
-        formatter: function(value) {
+        formatter: function (value) {
           return value.ticker;
         }
       }
@@ -61,8 +80,44 @@ export default function MarkowitzChart({ data }) {
       showLine: true,
       pointRadius: 0,
       datalabels: { display: false }
-    }))
-  ];
+    })),
+    frontier.length > 0 && {
+      label: 'Frontera eficiente',
+      data: frontier,
+      borderColor: 'green',
+      borderWidth: 2,
+      backgroundColor: 'transparent',
+      showLine: true,
+      pointRadius: 0,
+      datalabels: { display: false }
+    },
+    maxSharpe && {
+      label: 'Máx Sharpe',
+      data: [maxSharpe],
+      backgroundColor: 'orange',
+      pointStyle: 'star',
+      pointRadius: 8,
+      showLine: false,
+      datalabels: {
+        display: true,
+        align: 'left',
+        anchor: 'end',
+        font: { weight: 'bold' },
+        formatter: () => "Max Sharpe"
+      }
+    },
+    cmlLine.length > 0 && {
+      label: 'Capital Market Line',
+      data: cmlLine,
+      borderColor: 'purple',
+      borderDash: [5, 5],
+      borderWidth: 1.5,
+      backgroundColor: 'transparent',
+      showLine: true,
+      pointRadius: 0,
+      datalabels: { display: false }
+    }
+  ].filter(Boolean); // elimina datasets nulos
 
   const chartData = { datasets };
 
@@ -74,7 +129,7 @@ export default function MarkowitzChart({ data }) {
       datalabels: { display: false },
       tooltip: {
         callbacks: {
-          label: function(context) {
+          label: function (context) {
             const x = context.raw.x.toFixed(4);
             const y = context.raw.y.toFixed(4);
             return ` Riesgo: ${x} | Retorno: ${y}`;

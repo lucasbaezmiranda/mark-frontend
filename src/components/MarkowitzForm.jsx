@@ -5,26 +5,25 @@ export default function MarkowitzForm({ onResults }) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [calculateFrontier, setCalculateFrontier] = useState(false);
+  const [riskFree, setRiskFree] = useState(0.03);
 
   const tickersPool = [
     "BBAR","BMA","CEPU","CRESY","EDN","GGAL","IRS",
     "LOMA","MELI","PAM","SUPV","TEO","TGS","TS","YPF"
   ];
 
-  // ✅ Generar cartera aleatoria inicial al montar
   useEffect(() => {
     generarAleatoria();
   }, []);
 
-  // ✅ Función para formatear fecha a YYYY-MM-DD
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
-    // Si viene en formato DD/MM/YYYY
     if (dateStr.includes("/")) {
       const [day, month, year] = dateStr.split("/");
       return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     }
-    return dateStr; // Ya está en YYYY-MM-DD
+    return dateStr;
   };
 
   const handleSubmit = async (e) => {
@@ -39,7 +38,9 @@ export default function MarkowitzForm({ onResults }) {
     const payload = {
       tickers: cleanedTickers,
       start_date: formatDate(startDate),
-      end_date: formatDate(endDate)
+      end_date: formatDate(endDate),
+      calculate_frontier: calculateFrontier,
+      risk_free: calculateFrontier ? riskFree : null
     };
 
     console.log("📤 Enviando payload:", payload);
@@ -51,7 +52,7 @@ export default function MarkowitzForm({ onResults }) {
           "Content-Type": "application/json",
           "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
         },
-        body: JSON.stringify(payload) // ✅ Ahora solo una vez
+        body: JSON.stringify(payload)
       });
 
       console.log("📥 Status respuesta:", res.status);
@@ -106,6 +107,31 @@ export default function MarkowitzForm({ onResults }) {
         <label>Fecha de fin:</label><br />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
       </div>
+
+      {/* Checkbox para calcular frontera */}
+      <div style={{ marginTop: "10px" }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={calculateFrontier}
+            onChange={e => setCalculateFrontier(e.target.checked)}
+          /> Calcular frontera eficiente
+        </label>
+      </div>
+
+      {/* Campo para tasa libre de riesgo */}
+      {calculateFrontier && (
+        <div style={{ marginTop: "5px" }}>
+          <label>Tasa libre de riesgo (anual):</label><br />
+          <input
+            type="number"
+            step="0.001"
+            value={riskFree}
+            onChange={e => setRiskFree(parseFloat(e.target.value))}
+          />
+        </div>
+      )}
+
       <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
         <button 
           type="submit" 
