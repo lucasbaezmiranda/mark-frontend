@@ -7,6 +7,7 @@ export default function MarkowitzForm({ onResults }) {
   const [loading, setLoading] = useState(false);
   const [calculateFrontier, setCalculateFrontier] = useState(false);
   const [riskFree, setRiskFree] = useState(0.03);
+  const [numAssets, setNumAssets] = useState(4); // ✅ nuevo estado
 
   const tickersPool = [
     "BBAR","BMA","CEPU","CRESY","EDN","GGAL","IRS",
@@ -67,14 +68,12 @@ export default function MarkowitzForm({ onResults }) {
   };
 
   const generarAleatoria = () => {
-    const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, 3);
+    const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, numAssets);
 
-    const now = new Date();
-    const maxStart = new Date();
-    maxStart.setMonth(now.getMonth() - 6);
-
-    const minStart = new Date();
-    minStart.setFullYear(now.getFullYear() - 2);
+    // Rango: 2019-01-01 a 2025-06-30
+    const minStart = new Date("2019-01-01");
+    const maxStart = new Date("2025-06-30");
+    maxStart.setMonth(maxStart.getMonth() - 6); // para garantizar ventana de 6 meses
 
     const randomStart = new Date(
       minStart.getTime() + Math.random() * (maxStart.getTime() - minStart.getTime())
@@ -101,6 +100,18 @@ export default function MarkowitzForm({ onResults }) {
       <div>
         <label>Fecha de fin:</label><br />
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+      </div>
+
+      {/* Nuevo campo para número de activos aleatorios */}
+      <div style={{ marginTop: "10px" }}>
+        <label>Cantidad de activos para cartera aleatoria:</label><br />
+        <input 
+          type="number" 
+          min="1" 
+          max={tickersPool.length} 
+          value={numAssets} 
+          onChange={e => setNumAssets(parseInt(e.target.value) || 1)} 
+        />
       </div>
 
       {/* Checkbox para calcular frontera */}
