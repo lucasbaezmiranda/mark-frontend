@@ -38,14 +38,16 @@ export default function MarkowitzContainer() {
           </p>
         )}
 
-        {/* ✅ Mostrar pesos de la cartera óptima */}
-        {chartData?.max_sharpe?.weights && (
+        {/* ✅ Mostrar pesos de la cartera óptima con tickers */}
+        {chartData?.max_sharpe?.weights && chartData?.single_assets && (
           <div style={{ marginTop: "20px" }}>
             <h3>Pesos de la cartera óptima (Máx Sharpe):</h3>
             <ul>
               {chartData.max_sharpe.weights.map((w, idx) => (
                 <li key={idx}>
-                  Activo {idx + 1}: {(w * 100).toFixed(2)}%
+                  {chartData.single_assets[idx]?.ticker || `Activo ${idx + 1}`}:
+                  {" "}
+                  {(w * 100).toFixed(2)}%
                 </li>
               ))}
             </ul>
