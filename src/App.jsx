@@ -2,7 +2,7 @@ import { useState } from 'react';
 import MarkowitzContainer from './components/MarkowitzContainer';
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
 
   const toggleBackground = () => {
     setDarkMode((prev) => !prev);
