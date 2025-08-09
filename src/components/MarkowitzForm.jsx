@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 
+// 🔧 Parámetros por defecto (modificá estos)
+const DEFAULT_NUM_ASSETS = 6;                // cantidad de activos en cartera aleatoria
+const MIN_START_DATE = "2019-01-01";         // fecha mínima de inicio
+const MAX_START_DATE = "2025-06-30";         // fecha máxima de inicio
+const INTERVAL_MONTHS = 6;                   // meses entre fecha de inicio y fin
+
 export default function MarkowitzForm({ onResults }) {
   const [tickers, setTickers] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -7,7 +13,7 @@ export default function MarkowitzForm({ onResults }) {
   const [loading, setLoading] = useState(false);
   const [calculateFrontier, setCalculateFrontier] = useState(false);
   const [riskFree, setRiskFree] = useState(0.03);
-  const [numAssets, setNumAssets] = useState(4); // ✅ nuevo estado
+  const [numAssets, setNumAssets] = useState(DEFAULT_NUM_ASSETS);
 
   const tickersPool = [
     "BBAR","BMA","CEPU","CRESY","EDN","GGAL","IRS",
@@ -56,7 +62,6 @@ export default function MarkowitzForm({ onResults }) {
 
       const raw = await res.json();
       const data = raw.body ? JSON.parse(raw.body) : raw;
-
       onResults(data, data.csv_url, riskFree);
 
     } catch (err) {
@@ -70,17 +75,16 @@ export default function MarkowitzForm({ onResults }) {
   const generarAleatoria = () => {
     const selected = tickersPool.sort(() => 0.5 - Math.random()).slice(0, numAssets);
 
-    // Rango: 2019-01-01 a 2025-06-30
-    const minStart = new Date("2019-01-01");
-    const maxStart = new Date("2025-06-30");
-    maxStart.setMonth(maxStart.getMonth() - 6); // para garantizar ventana de 6 meses
+    const minStart = new Date(MIN_START_DATE);
+    const maxStart = new Date(MAX_START_DATE);
+    maxStart.setMonth(maxStart.getMonth() - INTERVAL_MONTHS); // evitar que pase el rango
 
     const randomStart = new Date(
       minStart.getTime() + Math.random() * (maxStart.getTime() - minStart.getTime())
     );
 
     const randomEnd = new Date(randomStart);
-    randomEnd.setMonth(randomStart.getMonth() + 6);
+    randomEnd.setMonth(randomStart.getMonth() + INTERVAL_MONTHS);
 
     setTickers(selected.join(", "));
     setStartDate(randomStart.toISOString().split("T")[0]);
@@ -102,7 +106,7 @@ export default function MarkowitzForm({ onResults }) {
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
       </div>
 
-      {/* Nuevo campo para número de activos aleatorios */}
+      {/* Número de activos aleatorios */}
       <div style={{ marginTop: "10px" }}>
         <label>Cantidad de activos para cartera aleatoria:</label><br />
         <input 
@@ -142,32 +146,14 @@ export default function MarkowitzForm({ onResults }) {
         <button 
           type="submit" 
           disabled={loading}
-          style={{ 
-            backgroundColor: "#1976d2", 
-            color: "white", 
-            padding: "8px 16px", 
-            border: "none", 
-            borderRadius: "5px", 
-            cursor: "pointer", 
-            fontWeight: "bold",
-            flex: 1
-          }}
+          style={{ backgroundColor: "#1976d2", color: "white", padding: "8px 16px", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
         >
           {loading ? "Generando..." : "Generar gráfico"}
         </button>
         <button 
           type="button" 
           onClick={generarAleatoria} 
-          style={{ 
-            backgroundColor: "#1976d2", 
-            color: "white", 
-            padding: "8px 16px", 
-            border: "none", 
-            borderRadius: "5px", 
-            cursor: "pointer", 
-            fontWeight: "bold",
-            flex: 1
-          }}
+          style={{ backgroundColor: "#1976d2", color: "white", padding: "8px 16px", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
         >
           🎲 Cartera Aleatoria
         </button>
