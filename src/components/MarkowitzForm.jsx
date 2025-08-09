@@ -146,14 +146,14 @@ export default function MarkowitzForm({ onResults }) {
         <button 
           type="submit" 
           disabled={loading}
-          style={{ backgroundColor: "#1976d2", color: "white", padding: "8px 16px", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
+          style={{ backgroundColor: "#ee3919ff", color: "white", padding: "8px 16px", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
         >
           {loading ? "Generando..." : "Generar gráfico"}
         </button>
         <button 
           type="button" 
           onClick={generarAleatoria} 
-          style={{ backgroundColor: "#1976d2", color: "white", padding: "8px 16px", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
+          style={{ backgroundColor: "#2a50fcff", color: "white", padding: "8px 16px", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
         >
           🎲 Cartera Aleatoria
         </button>
