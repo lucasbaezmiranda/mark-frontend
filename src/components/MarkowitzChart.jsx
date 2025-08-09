@@ -52,7 +52,7 @@ export default function MarkowitzChart({ data }) {
       {
         label: 'Activos individuales',
         data: singleAssets,
-        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+        backgroundColor: 'rgba(255, 99, 132, 1)',
         pointRadius: 5,
         datalabels: {
           display: true, // ✅ Solo este dataset muestra etiquetas
