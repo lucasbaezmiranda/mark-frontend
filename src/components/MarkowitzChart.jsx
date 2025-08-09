@@ -41,7 +41,7 @@ export default function MarkowitzChart({ data }) {
   const chartData = {
     datasets: [
       {
-        label: 'Carteras Monte Carlo',
+        label: 'Carteras Montecarlo',
         data: portfolios,
         backgroundColor: 'rgba(0, 123, 255, 0.4)',
         pointRadius: 4,
@@ -63,7 +63,7 @@ export default function MarkowitzChart({ data }) {
         }
       },
       {
-        label: 'Frontera Eficiente',
+        label: 'Frontera eficiente',
         data: frontier,
         borderColor: 'green',
         borderWidth: 2,
