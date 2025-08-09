@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 
 // 🔧 Parámetros por defecto (modificá estos)
-const DEFAULT_NUM_ASSETS = 6;                // cantidad de activos en cartera aleatoria
+const DEFAULT_NUM_ASSETS = 8;                // cantidad de activos en cartera aleatoria
 const MIN_START_DATE = "2019-01-01";         // fecha mínima de inicio
 const MAX_START_DATE = "2025-06-30";         // fecha máxima de inicio
-const INTERVAL_MONTHS = 6;                   // meses entre fecha de inicio y fin
+const INTERVAL_MONTHS = 12;                   // meses entre fecha de inicio y fin
 
 export default function MarkowitzForm({ onResults }) {
   const [tickers, setTickers] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
-  const [calculateFrontier, setCalculateFrontier] = useState(false);
+  const [calculateFrontier, setCalculateFrontier] = useState(true);
   const [riskFree, setRiskFree] = useState(0.03);
   const [numAssets, setNumAssets] = useState(DEFAULT_NUM_ASSETS);
 
