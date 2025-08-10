@@ -41,7 +41,7 @@ export default function MarkowitzChart({ data }) {
   const chartData = {
     datasets: [
       {
-        label: 'Carteras Montecarlo',
+        label: 'Carteras aleatorias',
         data: portfolios,
         backgroundColor: 'rgba(0, 123, 255, 0.4)',
         pointRadius: 4,

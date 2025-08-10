@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 // 🔧 Parámetros por defecto (modificá estos)
-const DEFAULT_NUM_ASSETS = 8;                // cantidad de activos en cartera aleatoria
+const DEFAULT_NUM_ASSETS = 5;                // cantidad de activos en cartera aleatoria
 const MIN_START_DATE = "2019-01-01";         // fecha mínima de inicio
 const MAX_START_DATE = "2025-06-30";         // fecha máxima de inicio
 const INTERVAL_MONTHS = 12;                   // meses entre fecha de inicio y fin
@@ -106,16 +106,69 @@ export default function MarkowitzForm({ onResults }) {
         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
       </div>
 
-      {/* Número de activos aleatorios */}
+
+
+      {/* Número de activos aleatorios con botones +/- */}
       <div style={{ marginTop: "10px" }}>
         <label>Cantidad de activos para cartera aleatoria:</label><br />
-        <input 
-          type="number" 
-          min="1" 
-          max={tickersPool.length} 
-          value={numAssets} 
-          onChange={e => setNumAssets(parseInt(e.target.value) || 1)} 
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "5px" }}>
+          <button
+            type="button"
+            onClick={() => setNumAssets(prev => Math.max(1, prev - 1))}
+            disabled={numAssets <= 1}
+            style={{
+              backgroundColor: numAssets <= 1 ? "#ccc" : "#f44336",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              width: "30px",
+              height: "30px",
+              cursor: numAssets <= 1 ? "not-allowed" : "pointer",
+              fontSize: "16px",
+              fontWeight: "bold"
+            }}
+          >
+            −
+          </button>
+          
+          <input 
+            type="number" 
+            min="1" 
+            max={tickersPool.length} 
+            value={numAssets} 
+            onChange={e => setNumAssets(parseInt(e.target.value) || 1)}
+            style={{
+              width: "60px",
+              textAlign: "center",
+              padding: "5px",
+              border: "1px solid #ccc",
+              borderRadius: "4px"
+            }}
+          />
+          
+          <button
+            type="button"
+            onClick={() => setNumAssets(prev => Math.min(tickersPool.length, prev + 1))}
+            disabled={numAssets >= tickersPool.length}
+            style={{
+              backgroundColor: numAssets >= tickersPool.length ? "#ccc" : "#4CAF50",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              width: "30px",
+              height: "30px",
+              cursor: numAssets >= tickersPool.length ? "not-allowed" : "pointer",
+              fontSize: "16px",
+              fontWeight: "bold"
+            }}
+          >
+            +
+          </button>
+          
+          <span style={{ marginLeft: "10px", fontSize: "14px", color: "#666" }}>
+            / {tickersPool.length} disponibles
+          </span>
+        </div>
       </div>
 
       {/* Checkbox para calcular frontera */}

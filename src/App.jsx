@@ -28,7 +28,7 @@ function App() {
         {darkMode ? 'Modo Claro' : 'Modo Oscuro'}
       </button>
 
-      <h1>Frontera de Markowitz</h1>
+      <h1>Simulador de portfolios</h1>
       <MarkowitzContainer />
     </div>
   );
