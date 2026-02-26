@@ -51,12 +51,9 @@ export default function MarkowitzForm({ onResults }) {
     };
 
     try {
-      const res = await fetch("https://5e1eqa5y6b.execute-api.us-east-1.amazonaws.com/v1/query", {
+      const res = await fetch("https://bbg06jre50.execute-api.us-east-1.amazonaws.com/prod/query", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-api-key": "nycyeRi4SY9RM48bE8gGY8Ui0Sofq1Gb5JnXJWxh"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 

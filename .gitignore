@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Terraform
+infra/terraform.tfvars
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/lambda_dummy.zip
+infra/terraform.tfstate
+infra/terraform.tfstate.backup
+
+# Build artifacts
+lambda.zip
+package/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

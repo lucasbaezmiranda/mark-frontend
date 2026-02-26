@@ -1,0 +1,41 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt -t package/
+
+      - name: Copy handler
+        run: cp backend/app.py package/
+
+      - name: Create ZIP (exclude boto3/botocore — already in Lambda runtime)
+        run: cd package && zip -r ../lambda.zip . -x "boto3*" -x "botocore*"
+
+      - name: Update Lambda function code
+        run: |
+          aws lambda update-function-code \
+            --function-name markowitz-lambda \
+            --zip-file fileb://lambda.zip
