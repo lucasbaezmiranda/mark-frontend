@@ -1,6 +1,13 @@
 # ── Data Sources ──────────────────────────────────────────────────────────────
-# Automatically gets your AWS Account ID so you don't have to pass it as a variable
 data "aws_caller_identity" "current" {}
+
+# ── ECR Repository ────────────────────────────────────────────────────────────
+# This is where your Docker image will be stored
+resource "aws_ecr_repository" "markowitz" {
+  name                 = "markowitz-repo"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true # Allows terraform destroy to work even if images exist
+}
 
 # ── IAM Role ──────────────────────────────────────────────────────────────────
 resource "aws_iam_role" "markowitz_lambda_role" {
@@ -42,36 +49,22 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
   })
 }
 
-# ── Lambda dummy ZIP (replaced by CI on first deploy) ─────────────────────────
-data "archive_file" "lambda_dummy" {
-  type        = "zip"
-  output_path = "${path.module}/lambda_dummy.zip"
-
-  source {
-    content  = "def lambda_handler(event, context): return {'statusCode': 200, 'body': 'placeholder'}"
-    filename = "app.py"
-  }
-}
-
-# ── Lambda Function ───────────────────────────────────────────────────────────
+# ── Lambda Function (Container Image Mode) ────────────────────────────────────
 resource "aws_lambda_function" "markowitz" {
   function_name = "markowitz-lambda"
   role          = aws_iam_role.markowitz_lambda_role.arn
-  runtime       = "python3.12"
-  handler       = "app.lambda_handler"
-  package_type  = "Zip"
-  filename      = data.archive_file.lambda_dummy.output_path
+  
+  # IMPORTANT: Change to Image type
+  package_type  = "Image"
+  
+  # We point to the ECR repo. GitHub Actions will push the ':latest' tag.
+  image_uri     = "${aws_ecr_repository.markowitz.repository_url}:latest"
+  
   memory_size   = 512
   timeout       = 60
 
-  # NOTE: If 'terraform apply' fails with 403 AccessDenied on GetLayerVersion:
-  # 1. Comment out the layers line below.
-  # 2. Run 'terraform apply'.
-  # 3. Add the layer manually in the AWS Console.
-  # 4. Uncomment this line and run 'terraform apply' again.
-  layers = [
-    "arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p312-scipy:5"
-  ]
+  # Layers are NO LONGER NEEDED. Everything is inside the Docker image.
+  layers = []
 
   environment {
     variables = {
@@ -80,7 +73,8 @@ resource "aws_lambda_function" "markowitz" {
   }
 
   lifecycle {
-    ignore_changes = [filename, source_code_hash]
+    # We ignore image_uri because GitHub Actions handles the updates
+    ignore_changes = [image_uri]
   }
 }
 
@@ -95,7 +89,6 @@ resource "aws_api_gateway_resource" "proxy" {
   path_part   = "{proxy+}"
 }
 
-# ── ANY method → Lambda proxy ─────────────────────────────────────────────────
 resource "aws_api_gateway_method" "proxy_any" {
   rest_api_id   = aws_api_gateway_rest_api.markowitz_api.id
   resource_id   = aws_api_gateway_resource.proxy.id
@@ -112,7 +105,7 @@ resource "aws_api_gateway_integration" "proxy_lambda" {
   uri                     = aws_lambda_function.markowitz.invoke_arn
 }
 
-# ── OPTIONS (CORS preflight) ──────────────────────────────────────────────────
+# ── OPTIONS (CORS) ────────────────────────────────────────────────────────────
 resource "aws_api_gateway_method" "proxy_options" {
   rest_api_id   = aws_api_gateway_rest_api.markowitz_api.id
   resource_id   = aws_api_gateway_resource.proxy.id
@@ -125,10 +118,7 @@ resource "aws_api_gateway_integration" "proxy_options_mock" {
   resource_id = aws_api_gateway_resource.proxy.id
   http_method = aws_api_gateway_method.proxy_options.http_method
   type        = "MOCK"
-
-  request_templates = {
-    "application/json" = "{\"statusCode\": 200}"
-  }
+  request_templates = { "application/json" = "{\"statusCode\": 200}" }
 }
 
 resource "aws_api_gateway_method_response" "proxy_options_200" {
@@ -136,7 +126,6 @@ resource "aws_api_gateway_method_response" "proxy_options_200" {
   resource_id = aws_api_gateway_resource.proxy.id
   http_method = aws_api_gateway_method.proxy_options.http_method
   status_code = "200"
-
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
     "method.response.header.Access-Control-Allow-Methods" = true
@@ -149,7 +138,6 @@ resource "aws_api_gateway_integration_response" "proxy_options_response" {
   resource_id = aws_api_gateway_resource.proxy.id
   http_method = aws_api_gateway_method.proxy_options.http_method
   status_code = aws_api_gateway_method_response.proxy_options_200.status_code
-
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
     "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
@@ -160,15 +148,8 @@ resource "aws_api_gateway_integration_response" "proxy_options_response" {
 # ── Deployment ────────────────────────────────────────────────────────────────
 resource "aws_api_gateway_deployment" "prod" {
   rest_api_id = aws_api_gateway_rest_api.markowitz_api.id
-
-  depends_on = [
-    aws_api_gateway_integration.proxy_lambda,
-    aws_api_gateway_integration.proxy_options_mock,
-  ]
-
-  lifecycle {
-    create_before_destroy = true
-  }
+  depends_on  = [aws_api_gateway_integration.proxy_lambda, aws_api_gateway_integration.proxy_options_mock]
+  lifecycle   { create_before_destroy = true }
 }
 
 resource "aws_api_gateway_stage" "prod" {
@@ -177,7 +158,6 @@ resource "aws_api_gateway_stage" "prod" {
   stage_name    = "prod"
 }
 
-# ── Lambda permission for API Gateway ─────────────────────────────────────────
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
@@ -186,8 +166,11 @@ resource "aws_lambda_permission" "apigw" {
   source_arn    = "${aws_api_gateway_rest_api.markowitz_api.execution_arn}/*/*"
 }
 
-# ── Output ────────────────────────────────────────────────────────────────────
 output "api_url" {
-  value       = aws_api_gateway_stage.prod.invoke_url
-  description = "API Gateway invoke URL (stage: prod)"
+  value = aws_api_gateway_stage.prod.invoke_url
+}
+
+# Added output to help GitHub Actions know where to push
+output "ecr_repository_url" {
+  value = aws_ecr_repository.markowitz.repository_url
 }

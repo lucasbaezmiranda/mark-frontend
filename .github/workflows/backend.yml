@@ -1,3 +1,4 @@
+
 name: Deploy Backend
 
 on:
@@ -25,43 +26,28 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
-      # ─── 1. COMPILACIÓN ─────────────────────────────────────────────────────
-      # Usamos Docker para que el binario sea compatible con Amazon Linux 2023
-      - name: Build C++ Optimizer
+      # ─── 1. LOGIN EN ECR ────────────────────────────────────────────────────
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ─── 2. BUILD Y PUSH DE LA IMAGEN ───────────────────────────────────────
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.registry }}
+          ECR_REPOSITORY: markowitz-repo
+          IMAGE_TAG: latest
         run: |
           cd backend
-          docker build -t optimizer-builder .
-          
-          # Extraemos el binario del contenedor al host de GitHub Actions
-          docker create --name temp-container optimizer-builder
-          docker cp temp-container:/build/optimizer ./optimizer
-          docker rm temp-container
-          
-          chmod +x optimizer
+          # Construimos la imagen completa (incluye C++, Python, Pandas y NumPy)
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          # La subimos al repositorio que creaste con Terraform
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # ─── 2. PREPARAR EL PAQUETE (Solo lo esencial) ──────────────────────────
-      # Como el requirements.txt está vacío, este ZIP pesará menos de 5MB
-      - name: Prepare Package
+      # ─── 3. ACTUALIZAR LA LAMBDA ───────────────────────────────────────────
+      - name: Update Lambda Function
         run: |
-          mkdir -p package
-          
-          # Instalamos dependencias extras solo si el archivo NO está vacío
-          if [ -s backend/requirements.txt ]; then
-            pip install -r backend/requirements.txt -t package/
-          fi
-          
-          # Copiamos el código y el binario optimizado
-          cp backend/app.py package/
-          cp backend/optimizer package/
-
-      # ─── 3. DEPLOY A AWS LAMBDA ──────────────────────────────────────────────
-      - name: Create ZIP
-        run: |
-          cd package
-          zip -r ../lambda.zip .
-          
-      - name: Update Lambda function code
-        run: |
+          # Ahora actualizamos usando --image-uri en lugar de --zip-file
           aws lambda update-function-code \
             --function-name markowitz-lambda \
-            --zip-file fileb://lambda.zip
+            --image-uri ${{ steps.login-ecr.registry }}/markowitz-repo:latest
