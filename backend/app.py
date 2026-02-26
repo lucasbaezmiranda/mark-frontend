@@ -3,17 +3,20 @@ import uuid
 import boto3
 import pandas as pd
 import numpy as np
-import itertools
 import io
+import os
+import subprocess
 from boto3.dynamodb.conditions import Key
 
-BUCKET_NAME = "lukebm-plot-bucket"
-# Inicializamos el recurso fuera del handler para reutilizar conexiones
-dynamodb = boto3.resource('dynamodb')
+# Configuration from Environment Variables (Terraform)
+BUCKET_NAME = os.environ.get("BUCKET_NAME", "lukebm-plot-bucket")
+REGION = os.environ.get("AWS_REGION", "us-east-1")
+
+dynamodb = boto3.resource('dynamodb', region_name=REGION)
 table = dynamodb.Table('stock_prices')
 
 def lambda_handler(event, context):
-    # Soporte para preflight OPTIONS (CORS)
+    # 1. Handle CORS Preflight (OPTIONS)
     if event.get("httpMethod") == "OPTIONS":
         return {
             "statusCode": 200,
@@ -26,113 +29,103 @@ def lambda_handler(event, context):
         }
 
     try:
+        # 2. Parse Request
         body = json.loads(event["body"])
         tickers = body["tickers"]
         start = body["start_date"]
         end = body["end_date"]
+        n_points = 50
 
-        # ---------------- CAMBIO: Obtención de datos desde DynamoDB ----------------
+        # 3. Fetch Data from DynamoDB
         all_data = []
         for ticker in tickers:
-            # Usamos Query asumiendo que 'ticker' es la Partition Key 
-            # y 'date' es la Sort Key (común en tablas financieras)
             response = table.query(
                 KeyConditionExpression=Key('ticker').eq(ticker) & Key('date').between(start, end)
             )
             items = response.get('Items', [])
-            
-            # Manejar paginación si hay muchos datos por ticker
             while 'LastEvaluatedKey' in response:
                 response = table.query(
                     KeyConditionExpression=Key('ticker').eq(ticker) & Key('date').between(start, end),
                     ExclusiveStartKey=response['LastEvaluatedKey']
                 )
                 items.extend(response.get('Items', []))
-            
             all_data.extend(items)
 
         if not all_data:
-            raise ValueError("No se encontraron datos para los tickers y fechas seleccionadas.")
+            raise ValueError("No data found for the selected tickers and dates.")
 
-        # Convertir a DataFrame y pivotar para que tenga formato [Date x Ticker]
+        # 4. Prepare DataFrames
         raw_df = pd.DataFrame(all_data)
-        
-        # Convertir precios a float (DynamoDB devuelve Decimal)
         raw_df['close'] = raw_df['close'].astype(float)
-        
-        # Transformar a formato serie temporal: Filas = Date, Columnas = Ticker
         df = raw_df.pivot(index='date', columns='ticker', values='close').dropna()
-        # --------------------------------------------------------------------------
 
-        # Calcular retornos diarios
+        # 5. Calculate Financial Parameters (Anualized)
         daily_returns = df.pct_change().dropna()
-        mean_returns = daily_returns.mean()
-        cov_matrix = daily_returns.cov()
-        num_portfolios = 100
+        mu = daily_returns.mean().values * 252
+        cov = daily_returns.cov().values * 252
+        
+        # 6. Call C++ Optimizer via Subprocess
+        # We pass data as raw text: N_Assets, Mu_Vector, Cov_Matrix_Flattened, N_Points
+        input_str = f"{len(tickers)}\n"
+        input_str += " ".join(map(str, mu.tolist())) + "\n"
+        for row in cov:
+            input_str += " ".join(map(str, row.tolist())) + "\n"
+        input_str += f"{n_points}\n"
 
-        # ---------------- Monte Carlo portfolios ----------------
+        # Ensure the binary is executable in the Lambda environment
+        optimizer_path = './optimizer'
+        if os.path.exists(optimizer_path):
+            os.chmod(optimizer_path, 0o755)
+        else:
+            raise FileNotFoundError("The 'optimizer' binary was not found in the package.")
+
+        process = subprocess.Popen(
+            [optimizer_path], 
+            stdin=subprocess.PIPE, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        stdout, stderr = process.communicate(input=input_str)
+
+        if process.returncode != 0:
+            raise RuntimeError(f"C++ Optimizer failed: {stderr}")
+
+        optimizer_results = json.loads(stdout)
+
+        # 7. Monte Carlo Portfolios (calculated in Python)
         portfolios = []
-        for _ in range(num_portfolios):
-            weights = np.random.dirichlet(np.ones(len(tickers)), size=1)[0]
-            port_return = np.sum(weights * mean_returns) * 252
-            port_std = np.sqrt(np.dot(weights.T, np.dot(cov_matrix * 252, weights)))
-            portfolios.append({"risk": float(port_std), "return": float(port_return)})
+        for _ in range(100):
+            w = np.random.dirichlet(np.ones(len(tickers)))
+            p_ret = np.dot(w, mu)
+            p_risk = np.sqrt(np.dot(w.T, np.dot(cov, w)))
+            portfolios.append({"risk": float(p_risk), "return": float(p_ret)})
 
-        # ---------------- Combinaciones por pares ----------------
-        pairs_data = []
-        for i, j in itertools.combinations(range(len(tickers)), 2):
-            w_range = np.linspace(0, 1, 50)
-            r_vals = []
-            s_vals = []
-            for w in w_range:
-                w_vec = np.zeros(len(tickers))
-                w_vec[i] = w
-                w_vec[j] = 1 - w
-                ret = np.sum(w_vec * mean_returns) * 252
-                std = np.sqrt(np.dot(w_vec.T, np.dot(cov_matrix * 252, w_vec)))
-                r_vals.append(float(ret))
-                s_vals.append(float(std))
-            pairs_data.append({
-                "tickers": [tickers[i], tickers[j]],
-                "risks": s_vals,
-                "returns": r_vals
-            })
-
-        # ---------------- Activos individuales ----------------
+        # 8. Individual Assets
         single_assets = []
         for i, ticker in enumerate(tickers):
-            if ticker in mean_returns:
-                w_vec = np.zeros(len(tickers))
-                w_vec[i] = 1.0
-                ret = np.sum(w_vec * mean_returns) * 252
-                std = np.sqrt(np.dot(w_vec.T, np.dot(cov_matrix * 252, w_vec)))
-                single_assets.append({"ticker": ticker, "risk": float(std), "return": float(ret)})
+            single_assets.append({
+                "ticker": ticker, 
+                "risk": float(np.sqrt(cov[i, i])), 
+                "return": float(mu[i])
+            })
 
-        # ---------------- CSV con precios históricos ----------------
-        df_csv = df.copy()
-        df_csv.reset_index(inplace=True)
+        # 9. Save Historical CSV to S3
+        df_csv = df.copy().reset_index()
         csv_buffer = io.StringIO()
         df_csv.to_csv(csv_buffer, index=False)
-
-        filename = f"markowitz_prices_{uuid.uuid4().hex}.csv"
+        filename = f"markowitz_{uuid.uuid4().hex}.csv"
+        
         s3 = boto3.client("s3")
         s3.put_object(
-            Bucket=BUCKET_NAME,
-            Key=filename,
-            Body=csv_buffer.getvalue(),
+            Bucket=BUCKET_NAME, 
+            Key=filename, 
+            Body=csv_buffer.getvalue(), 
             ContentType="text/csv"
         )
-
         csv_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{filename}"
 
-        # ---------------- Respuesta final ----------------
-        response = {
-            "portfolios": portfolios,
-            "pairs": pairs_data,
-            "single_assets": single_assets,
-            "csv_url": csv_url
-        }
-
+        # 10. Final Response
         return {
             "statusCode": 200,
             "headers": {
@@ -140,16 +133,17 @@ def lambda_handler(event, context):
                 "Access-Control-Allow-Methods": "OPTIONS,POST",
                 "Access-Control-Allow-Headers": "Content-Type"
             },
-            "body": json.dumps(response)
+            "body": json.dumps({
+                "frontier": optimizer_results["frontier"],
+                "portfolios": portfolios,
+                "single_assets": single_assets,
+                "csv_url": csv_url
+            })
         }
 
     except Exception as e:
         return {
             "statusCode": 500,
-            "headers": {
-                "Access-Control-Allow-Origin": "https://frontier.lukebm.com",
-                "Access-Control-Allow-Methods": "OPTIONS,POST",
-                "Access-Control-Allow-Headers": "Content-Type"
-            },
+            "headers": {"Access-Control-Allow-Origin": "https://frontier.lukebm.com"},
             "body": json.dumps({"error": str(e)})
         }

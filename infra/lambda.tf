@@ -1,3 +1,7 @@
+# ── Data Sources ──────────────────────────────────────────────────────────────
+# Automatically gets your AWS Account ID so you don't have to pass it as a variable
+data "aws_caller_identity" "current" {}
+
 # ── IAM Role ──────────────────────────────────────────────────────────────────
 resource "aws_iam_role" "markowitz_lambda_role" {
   name = "markowitz_lambda_role"
@@ -32,7 +36,7 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
       {
         Effect   = "Allow"
         Action   = "dynamodb:Query"
-        Resource = "arn:aws:dynamodb:us-east-1:${var.aws_account_id}:table/stock_prices"
+        Resource = "arn:aws:dynamodb:us-east-1:${data.aws_caller_identity.current.account_id}:table/stock_prices"
       }
     ]
   })
@@ -60,12 +64,27 @@ resource "aws_lambda_function" "markowitz" {
   memory_size   = 512
   timeout       = 60
 
+  # NOTE: If 'terraform apply' fails with 403 AccessDenied on GetLayerVersion:
+  # 1. Comment out the layers line below.
+  # 2. Run 'terraform apply'.
+  # 3. Add the layer manually in the AWS Console.
+  # 4. Uncomment this line and run 'terraform apply' again.
+  layers = [
+    "arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p312-scipy:5"
+  ]
+
+  environment {
+    variables = {
+      BUCKET_NAME = "lukebm-plot-bucket"
+    }
+  }
+
   lifecycle {
     ignore_changes = [filename, source_code_hash]
   }
 }
 
-# ── API Gateway REST API ───────────────────────────────────────────────────────
+# ── API Gateway REST API ──────────────────────────────────────────────────────
 resource "aws_api_gateway_rest_api" "markowitz_api" {
   name = "MarkowitzApi"
 }

@@ -25,14 +25,31 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
+      # ─── 1. COMPILATION ─────────────────────────────────────────────────────
+      # We build the Docker image and "cat" the binary out into the workspace
+      - name: Build C++ Optimizer
+        run: |
+          cd backend
+          docker build -t optimizer-builder .
+          docker run --rm optimizer-builder cat optimizer > optimizer
+          chmod +x optimizer
+
+      # ─── 2. PREPARE PACKAGE ─────────────────────────────────────────────────
+      # We install small dependencies (like pandas) and add our fresh binary
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt -t package/
+        run: |
+          mkdir -p package
+          if [ -s backend/requirements.txt ]; then
+            pip install -r backend/requirements.txt -t package/
+          fi
+          cp backend/app.py package/
+          cp backend/optimizer package/
 
-      - name: Copy handler
-        run: cp backend/app.py package/
-
-      - name: Create ZIP (exclude boto3/botocore — already in Lambda runtime)
-        run: cd package && zip -r ../lambda.zip . -x "boto3*" -x "botocore*"
+      # ─── 3. DEPLOY ──────────────────────────────────────────────────────────
+      - name: Create ZIP
+        run: |
+          cd package
+          zip -r ../lambda.zip .
 
       - name: Update Lambda function code
         run: |
