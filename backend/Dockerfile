@@ -1,8 +1,8 @@
 # Usamos el SO real de Lambda pero sin restricciones de entrypoint
 FROM amazonlinux:2023
 
-# Instalar herramientas de compilación
-RUN dnf install -y gcc-c++ make cmake wget tar
+# Instalar herramientas de compilación Y GZIP (necesario para tar -xf)
+RUN dnf install -y gcc-c++ make cmake wget tar gzip
 
 # Instalar Eigen
 RUN wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz && \
@@ -15,5 +15,3 @@ COPY optimizer.cpp .
 
 # Compilar el binario
 RUN g++ -O3 -I /usr/local/include optimizer.cpp -o optimizer
-
-# No necesitamos CMD ni ENTRYPOINT, solo dejaremos el archivo ahí
