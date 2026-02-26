@@ -25,27 +25,34 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
-      # ─── 1. COMPILATION ─────────────────────────────────────────────────────
-      # We build the Docker image and "cat" the binary out into the workspace
+      # ─── 1. COMPILACIÓN (Usando Docker para compatibilidad con Amazon Linux) ───
       - name: Build C++ Optimizer
         run: |
           cd backend
+          # Construimos la imagen (asegúrate de que tu Dockerfile use amazonlinux:2023)
           docker build -t optimizer-builder .
-          docker run --rm optimizer-builder cat optimizer > optimizer
+          
+          # Extraemos el binario sin ejecutar el contenedor
+          docker create --name temp-container optimizer-builder
+          docker cp temp-container:/build/optimizer ./optimizer
+          docker rm temp-container
+          
+          # Permisos de ejecución
           chmod +x optimizer
 
-      # ─── 2. PREPARE PACKAGE ─────────────────────────────────────────────────
-      # We install small dependencies (like pandas) and add our fresh binary
+      # ─── 2. PREPARAR EL PAQUETE (Python + Binario) ──────────────────────────
       - name: Install dependencies
         run: |
           mkdir -p package
+          # Instalamos pandas/numpy/boto3 si están en requirements.txt
           if [ -s backend/requirements.txt ]; then
             pip install -r backend/requirements.txt -t package/
           fi
+          # Copiamos el handler de Python y el binario de C++ al paquete
           cp backend/app.py package/
           cp backend/optimizer package/
 
-      # ─── 3. DEPLOY ──────────────────────────────────────────────────────────
+      # ─── 3. DEPLOY A AWS LAMBDA ──────────────────────────────────────────────
       - name: Create ZIP
         run: |
           cd package
