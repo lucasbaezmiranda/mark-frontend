@@ -25,30 +25,32 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
-      # ─── 1. COMPILACIÓN (Usando Docker para compatibilidad con Amazon Linux) ───
+      # ─── 1. COMPILACIÓN ─────────────────────────────────────────────────────
+      # Usamos Docker para que el binario sea compatible con Amazon Linux 2023
       - name: Build C++ Optimizer
         run: |
           cd backend
-          # Construimos la imagen (asegúrate de que tu Dockerfile use amazonlinux:2023)
           docker build -t optimizer-builder .
           
-          # Extraemos el binario sin ejecutar el contenedor
+          # Extraemos el binario del contenedor al host de GitHub Actions
           docker create --name temp-container optimizer-builder
           docker cp temp-container:/build/optimizer ./optimizer
           docker rm temp-container
           
-          # Permisos de ejecución
           chmod +x optimizer
 
-      # ─── 2. PREPARAR EL PAQUETE (Python + Binario) ──────────────────────────
-      - name: Install dependencies
+      # ─── 2. PREPARAR EL PAQUETE (Solo lo esencial) ──────────────────────────
+      # Como el requirements.txt está vacío, este ZIP pesará menos de 5MB
+      - name: Prepare Package
         run: |
           mkdir -p package
-          # Instalamos pandas/numpy/boto3 si están en requirements.txt
+          
+          # Instalamos dependencias extras solo si el archivo NO está vacío
           if [ -s backend/requirements.txt ]; then
             pip install -r backend/requirements.txt -t package/
           fi
-          # Copiamos el handler de Python y el binario de C++ al paquete
+          
+          # Copiamos el código y el binario optimizado
           cp backend/app.py package/
           cp backend/optimizer package/
 
@@ -57,7 +59,7 @@ jobs:
         run: |
           cd package
           zip -r ../lambda.zip .
-
+          
       - name: Update Lambda function code
         run: |
           aws lambda update-function-code \
