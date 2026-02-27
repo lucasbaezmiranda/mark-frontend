@@ -28,17 +28,19 @@ export default function MarkowitzChart({ data }) {
   }));
 
   // 3. Frontera eficiente (Línea verde continua)
-  // IMPORTANTE: El backend ya los manda ordenados por retorno
+  // IMPORTANTE: Para que la línea se vea continua, los puntos DEBEN estar ordenados por X (Riesgo)
   const frontier = data.frontier
-    ? data.frontier.map(p => ({ 
-        x: p.risk, 
-        y: p.return
-      }))
+    ? [...data.frontier]
+        .sort((a, b) => a.risk - b.risk) // Ordenar por riesgo de menor a mayor
+        .map(p => ({ 
+          x: p.risk, 
+          y: p.return
+        }))
     : [];
 
   // 4. Punto de Mínima Varianza (El punto con menor riesgo de la frontera)
   const minVarPoint = frontier.length > 0 
-    ? [...frontier].sort((a, b) => a.x - b.x)[0] 
+    ? frontier[0] // Al estar ya ordenada la frontera, el primero es el de menor riesgo
     : null;
 
   const chartData = {
@@ -46,20 +48,21 @@ export default function MarkowitzChart({ data }) {
       {
         label: 'Carteras aleatorias',
         data: portfolios,
-        backgroundColor: 'rgba(54, 162, 235, 0.3)', // Azul transparente
-        pointRadius: 3,
+        backgroundColor: 'rgba(54, 162, 235, 0.3)',
+        pointRadius: 2,
         datalabels: { display: false }
       },
       {
         label: 'Frontera eficiente',
         data: frontier,
-        borderColor: 'rgba(75, 192, 192, 1)', // Verde agua sólido
-        borderWidth: 4,
-        showLine: true, // ⚠️ ESTO ACTIVA LA CURVA
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 3,
+        showLine: true, // Esto dibuja la línea
         fill: false,
-        pointRadius: 0, // Ocultamos los puntos para ver solo la línea
+        pointRadius: 0, 
         pointHitRadius: 10,
-        tension: 0.3, // Suavizado de la curva
+        tension: 0.4, // Suaviza la curva
+        spanGaps: true, // Evita cortes si falta algún dato
         datalabels: { display: false }
       },
       {
@@ -81,7 +84,7 @@ export default function MarkowitzChart({ data }) {
       {
         label: 'Mínima Varianza',
         data: minVarPoint ? [minVarPoint] : [],
-        backgroundColor: 'rgba(255, 206, 86, 1)', // Amarillo/Oro
+        backgroundColor: 'rgba(255, 206, 86, 1)',
         pointRadius: 9,
         pointStyle: 'star',
         datalabels: { display: false }
@@ -91,15 +94,15 @@ export default function MarkowitzChart({ data }) {
 
   const options = {
     responsive: true,
-    maintainAspectRatio: true, // 🛠️ CAMBIO: Activamos esto para evitar el estiramiento
-    aspectRatio: 1.8, // 🛠️ CAMBIO: Proporción rectangular sana (2 es doble ancho que alto)
+    maintainAspectRatio: true,
+    aspectRatio: 1.8,
     plugins: {
       legend: {
         position: 'top',
         labels: { color: '#fff', font: { size: 12 } }
       },
       tooltip: {
-        mode: 'index',
+        mode: 'nearest', // Cambiado de 'index' a 'nearest' para mejor respuesta en Scatter
         intersect: false,
         callbacks: {
           label: (context) => {
@@ -127,7 +130,7 @@ export default function MarkowitzChart({ data }) {
   return (
     <div style={{ 
       width: '100%', 
-      maxWidth: '1000px', // 🛠️ CAMBIO: Evita que en monitores gigantes se estire al infinito
+      maxWidth: '1000px', 
       margin: '0 auto', 
       padding: '20px',
       backgroundColor: '#1a1a1a', 
