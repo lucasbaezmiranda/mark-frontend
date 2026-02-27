@@ -5,89 +5,91 @@ import {
   PointElement,
   LineElement,
   Tooltip,
-  Legend
+  Legend,
+  Filler // Agregado por si acaso
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartDataLabels);
+ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend, ChartDataLabels, Filler);
 
 export default function MarkowitzChart({ data }) {
-  if (!data || !data.portfolios) return <div style={{ color: 'white' }}>Cargando datos del simulador...</div>;
+  // Validación robusta de datos
+  if (!data || !data.portfolios || !data.frontier) {
+    return <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>Cargando datos del simulador...</div>;
+  }
 
-  // 1. Carteras Monte Carlo (Nube de puntos azul)
+  // 1. Carteras Monte Carlo
   const portfolios = data.portfolios.map(p => ({
     x: p.risk,
     y: p.return
   }));
 
-  // 2. Activos individuales (Cuadrados rojos con nombre)
+  // 2. Activos individuales
   const singleAssets = data.single_assets.map(a => ({
     x: a.risk,
     y: a.return,
     label: a.ticker || "Activo"
   }));
 
-  // 3. Frontera eficiente (Línea verde continua)
-  // IMPORTANTE: Para que la línea se vea continua, los puntos DEBEN estar ordenados por X (Riesgo)
-  const frontier = data.frontier
-    ? [...data.frontier]
-        .sort((a, b) => a.risk - b.risk) // Ordenar por riesgo de menor a mayor
-        .map(p => ({ 
-          x: p.risk, 
-          y: p.return
-        }))
-    : [];
+  // 3. Frontera eficiente - ORDENADA POR RIESGO (EJE X)
+  // Esto es CRÍTICO: Si los puntos saltan de adelante hacia atrás, la línea no se dibuja
+  const frontier = [...data.frontier]
+    .sort((a, b) => a.risk - b.risk) 
+    .map(p => ({ 
+      x: p.risk, 
+      y: p.return
+    }));
 
-  // 4. Punto de Mínima Varianza (El punto con menor riesgo de la frontera)
-  const minVarPoint = frontier.length > 0 
-    ? frontier[0] // Al estar ya ordenada la frontera, el primero es el de menor riesgo
-    : null;
+  // 4. Punto de Mínima Varianza
+  const minVarPoint = frontier.length > 0 ? frontier[0] : null;
 
   const chartData = {
     datasets: [
       {
-        label: 'Carteras aleatorias',
-        data: portfolios,
-        backgroundColor: 'rgba(54, 162, 235, 0.3)',
-        pointRadius: 2,
-        datalabels: { display: false }
-      },
-      {
+        type: 'line', // <--- FORZAMOS TIPO LÍNEA AQUÍ
         label: 'Frontera eficiente',
         data: frontier,
-        borderColor: 'rgba(75, 192, 192, 1)',
+        borderColor: 'rgba(75, 192, 192, 1)', 
         borderWidth: 3,
-        showLine: true, // Esto dibuja la línea
+        showLine: true,
         fill: false,
-        pointRadius: 0, 
-        pointHitRadius: 10,
-        tension: 0.4, // Suaviza la curva
-        spanGaps: true, // Evita cortes si falta algún dato
-        datalabels: { display: false }
+        pointRadius: 0, // Cambia a 2 si quieres ver los puntos de la línea para debuguear
+        pointHoverRadius: 5,
+        tension: 0.2, // Un valor pequeño ayuda a que no haga curvas raras
+        datalabels: { display: false },
+        zIndex: 10 // Asegura que esté por encima de la nube azul
+      },
+      {
+        label: 'Carteras aleatorias',
+        data: portfolios,
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        pointRadius: 2,
+        datalabels: { display: false },
+        zIndex: 1
       },
       {
         label: 'Activos individuales',
         data: singleAssets,
         backgroundColor: 'rgba(255, 99, 132, 1)',
-        pointRadius: 7,
+        pointRadius: 6,
         pointStyle: 'rectRot',
         datalabels: {
           display: true,
           align: 'top',
-          anchor: 'end',
-          offset: 5,
           color: '#fff',
-          font: { weight: 'bold', size: 11 },
+          font: { size: 10 },
           formatter: (value) => value.label
-        }
+        },
+        zIndex: 20
       },
       {
         label: 'Mínima Varianza',
         data: minVarPoint ? [minVarPoint] : [],
-        backgroundColor: 'rgba(255, 206, 86, 1)',
-        pointRadius: 9,
+        backgroundColor: '#FFD700',
+        pointRadius: 10,
         pointStyle: 'star',
-        datalabels: { display: false }
+        datalabels: { display: false },
+        zIndex: 30
       }
     ]
   };
@@ -96,18 +98,14 @@ export default function MarkowitzChart({ data }) {
     responsive: true,
     maintainAspectRatio: true,
     aspectRatio: 1.8,
+    animation: { duration: 0 }, // Desactivar animaciones ayuda a ver si el problema es de renderizado
     plugins: {
       legend: {
-        position: 'top',
-        labels: { color: '#fff', font: { size: 12 } }
+        labels: { color: '#fff' }
       },
       tooltip: {
-        mode: 'nearest', // Cambiado de 'index' a 'nearest' para mejor respuesta en Scatter
-        intersect: false,
         callbacks: {
-          label: (context) => {
-            return `${context.dataset.label}: Riesgo ${(context.parsed.x * 100).toFixed(2)}%, Retorno ${(context.parsed.y * 100).toFixed(2)}%`;
-          }
+          label: (ctx) => `${ctx.dataset.label}: R ${(ctx.parsed.x * 100).toFixed(1)}% | E(r) ${(ctx.parsed.y * 100).toFixed(1)}%`
         }
       },
       datalabels: { display: false }
@@ -115,27 +113,18 @@ export default function MarkowitzChart({ data }) {
     scales: {
       x: {
         type: 'linear',
-        title: { display: true, text: 'Riesgo (Volatilidad Anualizada)', color: '#ccc' },
         ticks: { color: '#aaa', callback: (v) => `${(v * 100).toFixed(0)}%` },
-        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
       },
       y: {
-        title: { display: true, text: 'Retorno Esperado (Anual)', color: '#ccc' },
         ticks: { color: '#aaa', callback: (v) => `${(v * 100).toFixed(0)}%` },
-        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
       }
     }
   };
 
   return (
-    <div style={{ 
-      width: '100%', 
-      maxWidth: '1000px', 
-      margin: '0 auto', 
-      padding: '20px',
-      backgroundColor: '#1a1a1a', 
-      borderRadius: '8px' 
-    }}>
+    <div style={{ width: '100%', maxWidth: '900px', margin: 'auto', background: '#111', padding: '15px', borderRadius: '12px' }}>
       <Scatter data={chartData} options={options} />
     </div>
   );
