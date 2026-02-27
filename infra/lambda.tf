@@ -2,11 +2,10 @@
 data "aws_caller_identity" "current" {}
 
 # ── ECR Repository ────────────────────────────────────────────────────────────
-# This is where your Docker image will be stored
 resource "aws_ecr_repository" "markowitz" {
   name                 = "markowitz-repo"
   image_tag_mutability = "MUTABLE"
-  force_delete         = true # Allows terraform destroy to work even if images exist
+  force_delete         = true
 }
 
 # ── IAM Role ──────────────────────────────────────────────────────────────────
@@ -53,18 +52,11 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
 resource "aws_lambda_function" "markowitz" {
   function_name = "markowitz-lambda"
   role          = aws_iam_role.markowitz_lambda_role.arn
-  
-  # IMPORTANT: Change to Image type
   package_type  = "Image"
-  
-  # We point to the ECR repo. GitHub Actions will push the ':latest' tag.
   image_uri     = "${aws_ecr_repository.markowitz.repository_url}:latest"
-  
   memory_size   = 512
   timeout       = 60
-
-  # Layers are NO LONGER NEEDED. Everything is inside the Docker image.
-  layers = []
+  layers        = []
 
   environment {
     variables = {
@@ -73,14 +65,13 @@ resource "aws_lambda_function" "markowitz" {
   }
 
   lifecycle {
-    # We ignore image_uri because GitHub Actions handles the updates
     ignore_changes = [image_uri]
   }
 }
 
-# ── API Gateway REST API ──────────────────────────────────────────────────────
+# ── API Gateway REST API (V2) ─────────────────────────────────────────────────
 resource "aws_api_gateway_rest_api" "markowitz_api" {
-  name = "MarkowitzApi"
+  name = "MarkowitzApi-v2"
 }
 
 resource "aws_api_gateway_resource" "proxy" {
@@ -139,17 +130,26 @@ resource "aws_api_gateway_integration_response" "proxy_options_response" {
   http_method = aws_api_gateway_method.proxy_options.http_method
   status_code = aws_api_gateway_method_response.proxy_options_200.status_code
   response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'https://frontier.lukebm.com'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
 }
 
-# ── Deployment ────────────────────────────────────────────────────────────────
+# ── Deployment & Stage ────────────────────────────────────────────────────────
 resource "aws_api_gateway_deployment" "prod" {
   rest_api_id = aws_api_gateway_rest_api.markowitz_api.id
-  depends_on  = [aws_api_gateway_integration.proxy_lambda, aws_api_gateway_integration.proxy_options_mock]
-  lifecycle   { create_before_destroy = true }
+  
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.proxy,
+      aws_api_gateway_method.proxy_options,
+      aws_api_gateway_integration_response.proxy_options_response,
+    ]))
+  }
+
+  depends_on = [aws_api_gateway_integration.proxy_lambda, aws_api_gateway_integration.proxy_options_mock]
+  lifecycle  { create_before_destroy = true }
 }
 
 resource "aws_api_gateway_stage" "prod" {
@@ -166,11 +166,11 @@ resource "aws_lambda_permission" "apigw" {
   source_arn    = "${aws_api_gateway_rest_api.markowitz_api.execution_arn}/*/*"
 }
 
+# ── Outputs ───────────────────────────────────────────────────────────────────
 output "api_url" {
   value = aws_api_gateway_stage.prod.invoke_url
 }
 
-# Added output to help GitHub Actions know where to push
 output "ecr_repository_url" {
   value = aws_ecr_repository.markowitz.repository_url
 }

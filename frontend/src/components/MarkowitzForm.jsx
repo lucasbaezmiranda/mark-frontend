@@ -51,7 +51,7 @@ export default function MarkowitzForm({ onResults }) {
     };
 
     try {
-      const res = await fetch("https://bbg06jre50.execute-api.us-east-1.amazonaws.com/prod/calculate", {
+      const res = await fetch("https://nhjiqxy0zk.execute-api.us-east-1.amazonaws.com/prod/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
