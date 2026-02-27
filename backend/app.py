@@ -17,15 +17,19 @@ dynamodb = boto3.resource('dynamodb', region_name=REGION)
 table = dynamodb.Table('stock_prices')
 
 def lambda_handler(event, context):
+    # Definimos los headers permisivos una sola vez
+    # Usar '*' permite peticiones desde cualquier origen (local, s3, cloudfront)
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*", 
+        "Access-Control-Allow-Methods": "OPTIONS,POST",
+        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    }
+
     # 1. Handle CORS Preflight (OPTIONS)
     if event.get("httpMethod") == "OPTIONS":
         return {
             "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "https://frontier.lukebm.com",
-                "Access-Control-Allow-Methods": "OPTIONS,POST",
-                "Access-Control-Allow-Headers": "Content-Type"
-            },
+            "headers": cors_headers,
             "body": json.dumps("OK")
         }
 
@@ -53,41 +57,39 @@ def lambda_handler(event, context):
             all_data.extend(items)
 
         if not all_data:
-            raise ValueError("No data found for the selected tickers and dates.")
+            raise ValueError(f"No data found for tickers {tickers} between {start} and {end}.")
 
         # 4. Prepare DataFrames
         raw_df = pd.DataFrame(all_data)
         raw_df['close'] = raw_df['close'].astype(float)
         df = raw_df.pivot(index='date', columns='ticker', values='close').dropna()
 
-        # 5. Calculate Financial Parameters (Anualized)
+        # Validación de dimensiones para evitar el error de "shapes"
+        if df.shape[1] < len(tickers):
+            missing = set(tickers) - set(df.columns)
+            raise ValueError(f"Faltan datos para: {missing}")
+
+        # 5. Calculate Financial Parameters
         daily_returns = df.pct_change().dropna()
         mu = daily_returns.mean().values * 252
         cov = daily_returns.cov().values * 252
         
         # 6. Call C++ Optimizer via Subprocess
-        # We pass data as raw text: N_Assets, Mu_Vector, Cov_Matrix_Flattened, N_Points
         input_str = f"{len(tickers)}\n"
         input_str += " ".join(map(str, mu.tolist())) + "\n"
         for row in cov:
             input_str += " ".join(map(str, row.tolist())) + "\n"
         input_str += f"{n_points}\n"
 
-        # --- FIX: Move binary to /tmp to bypass Read-Only Filesystem ---
+        # --- FIX: Move binary to /tmp ---
         original_bin = '/var/task/optimizer'
         temp_bin = '/tmp/optimizer'
-
-        # We copy the binary to /tmp every time to ensure it exists and has +x
         if not os.path.exists(temp_bin):
-            if os.path.exists(original_bin):
-                shutil.copy2(original_bin, temp_bin)
-                os.chmod(temp_bin, 0o755)
-            else:
-                raise FileNotFoundError(f"Binary not found at {original_bin}")
-        # ---------------------------------------------------------------
+            shutil.copy2(original_bin, temp_bin)
+            os.chmod(temp_bin, 0o755)
 
         process = subprocess.Popen(
-            [temp_bin], # Executing from /tmp
+            [temp_bin], 
             stdin=subprocess.PIPE, 
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE,
@@ -100,7 +102,7 @@ def lambda_handler(event, context):
 
         optimizer_results = json.loads(stdout)
 
-        # 7. Monte Carlo Portfolios (calculated in Python)
+        # 7. Monte Carlo Portfolios
         portfolios = []
         for _ in range(100):
             w = np.random.dirichlet(np.ones(len(tickers)))
@@ -124,22 +126,13 @@ def lambda_handler(event, context):
         filename = f"markowitz_{uuid.uuid4().hex}.csv"
         
         s3 = boto3.client("s3")
-        s3.put_object(
-            Bucket=BUCKET_NAME, 
-            Key=filename, 
-            Body=csv_buffer.getvalue(), 
-            ContentType="text/csv"
-        )
+        s3.put_object(Bucket=BUCKET_NAME, Key=filename, Body=csv_buffer.getvalue(), ContentType="text/csv")
         csv_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{filename}"
 
-        # 10. Final Response
+        # 10. Final Response con CORS headers
         return {
             "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "https://frontier.lukebm.com",
-                "Access-Control-Allow-Methods": "OPTIONS,POST",
-                "Access-Control-Allow-Headers": "Content-Type"
-            },
+            "headers": cors_headers,
             "body": json.dumps({
                 "frontier": optimizer_results["frontier"],
                 "portfolios": portfolios,
@@ -149,8 +142,9 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
+        # IMPORTANTE: El error también debe llevar CORS headers
         return {
             "statusCode": 500,
-            "headers": {"Access-Control-Allow-Origin": "https://frontier.lukebm.com"},
+            "headers": cors_headers,
             "body": json.dumps({"error": str(e)})
         }
