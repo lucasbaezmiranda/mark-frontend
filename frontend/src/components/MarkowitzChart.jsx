@@ -1,4 +1,4 @@
-import { Line } from 'react-chartjs-2'; // Cambiamos Scatter por Line
+import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   LinearScale,
@@ -6,22 +6,17 @@ import {
   LineElement,
   Tooltip,
   Legend,
-  ScatterController // Registramos esto para que convivan puntos y líneas
+  ScatterController
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-// IMPORTANTE: Registramos LineController implícitamente al importar Line de react-chartjs-2
-// pero nos aseguramos de tener LinearScale y LineElement.
 ChartJS.register(LinearScale, PointElement, LineElement, ScatterController, Tooltip, Legend, ChartDataLabels);
 
 export default function MarkowitzChart({ data }) {
-  if (!data || !data.portfolios) return <div style={{ color: 'white' }}>Cargando datos del simulador...</div>;
+  if (!data || !data.portfolios) return <div style={{ color: 'white' }}>Cargando datos...</div>;
 
-  // 1. Carteras Monte Carlo (Nube de puntos)
-  const portfolios = data.portfolios.map(p => ({
-    x: p.risk,
-    y: p.return
-  }));
+  // 1. Carteras Monte Carlo
+  const portfolios = data.portfolios.map(p => ({ x: p.risk, y: p.return }));
 
   // 2. Activos individuales
   const singleAssets = data.single_assets.map(a => ({
@@ -30,17 +25,18 @@ export default function MarkowitzChart({ data }) {
     label: a.ticker || "Activo"
   }));
 
-  // 3. Frontera eficiente (Ordenada por riesgo para evitar saltos en la línea)
+  // 3. Frontera eficiente (Respetando el orden del Backend)
   const frontier = data.frontier
-    ? [...data.frontier]
-        .sort((a, b) => a.risk - b.risk)
-        .map(p => ({ 
-          x: p.risk, 
-          y: p.return
-        }))
+    ? data.frontier.map(p => ({ 
+        x: p.risk, 
+        y: p.return
+      }))
     : [];
 
-  const minVarPoint = frontier.length > 0 ? frontier[0] : null;
+  // 4. Punto de Mínima Varianza (Buscamos el mínimo X del array para marcarlo)
+  const minVarPoint = frontier.length > 0 
+    ? [...frontier].sort((a, b) => a.x - b.x)[0] 
+    : null;
 
   const chartData = {
     datasets: [
@@ -52,14 +48,17 @@ export default function MarkowitzChart({ data }) {
         showLine: true,
         fill: false,
         pointRadius: 0,
-        tension: 0.3,
-        zIndex: 10
+        tension: 0.2,
+        zIndex: 10,
+        // ESTO ES CLAVE: Evita que Chart.js intente "entender" el orden de los datos
+        // y simplemente una los puntos en el orden del array.
+        parsing: false 
       },
       {
-        type: 'scatter', // Especificamos que este dataset es de puntos
+        type: 'scatter',
         label: 'Carteras aleatorias',
         data: portfolios,
-        backgroundColor: 'rgba(54, 162, 235, 0.25)',
+        backgroundColor: 'rgba(54, 162, 235, 0.15)',
         pointRadius: 2,
         datalabels: { display: false },
         zIndex: 1
@@ -107,22 +106,28 @@ export default function MarkowitzChart({ data }) {
     },
     scales: {
       x: {
-        type: 'linear', // Obligatorio para datos numéricos en ambos ejes
-        position: 'bottom',
+        type: 'linear',
         title: { display: true, text: 'Riesgo (Volatilidad)', color: '#ccc' },
         ticks: { color: '#aaa', callback: (v) => `${(v * 100).toFixed(0)}%` },
-        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
       },
       y: {
         title: { display: true, text: 'Retorno', color: '#ccc' },
         ticks: { color: '#aaa', callback: (v) => `${(v * 100).toFixed(0)}%` },
-        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+        grid: { color: 'rgba(255, 255, 255, 0.05)' }
       }
     }
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', padding: '20px', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
+    <div style={{ 
+      width: '100%', 
+      maxWidth: '1000px', 
+      margin: '0 auto', 
+      padding: '20px', 
+      backgroundColor: '#1a1a1a', 
+      borderRadius: '8px' 
+    }}>
       <Line data={chartData} options={options} />
     </div>
   );
