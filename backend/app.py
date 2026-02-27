@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import io
 import os
+import shutil
 import subprocess
 from boto3.dynamodb.conditions import Key
 
@@ -72,15 +73,21 @@ def lambda_handler(event, context):
             input_str += " ".join(map(str, row.tolist())) + "\n"
         input_str += f"{n_points}\n"
 
-        # Ensure the binary is executable in the Lambda environment
-        optimizer_path = './optimizer'
-        if os.path.exists(optimizer_path):
-            os.chmod(optimizer_path, 0o755)
-        else:
-            raise FileNotFoundError("The 'optimizer' binary was not found in the package.")
+        # --- FIX: Move binary to /tmp to bypass Read-Only Filesystem ---
+        original_bin = '/var/task/optimizer'
+        temp_bin = '/tmp/optimizer'
+
+        # We copy the binary to /tmp every time to ensure it exists and has +x
+        if not os.path.exists(temp_bin):
+            if os.path.exists(original_bin):
+                shutil.copy2(original_bin, temp_bin)
+                os.chmod(temp_bin, 0o755)
+            else:
+                raise FileNotFoundError(f"Binary not found at {original_bin}")
+        # ---------------------------------------------------------------
 
         process = subprocess.Popen(
-            [optimizer_path], 
+            [temp_bin], # Executing from /tmp
             stdin=subprocess.PIPE, 
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE,
