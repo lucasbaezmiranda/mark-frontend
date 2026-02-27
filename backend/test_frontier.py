@@ -13,8 +13,8 @@ END_DATE   = "2024-12-31"
 N_POINTS   = 200      # puntos en la frontera
 N_MC       = 1000     # portfolios Monte Carlo de fondo
 
-  SOLVER_SRC = "/home/luke/Desktop/repositorios/markowitz_project/backend/portfolio_solver.cpp"                                          
-  SOLVER_BIN = "/home/luke/Desktop/repositorios/markowitz_project/backend/portfolio_solver"
+SOLVER_SRC = os.path.join(os.path.dirname(__file__), "portfolio_solver.cpp")
+SOLVER_BIN = os.path.join(os.path.dirname(__file__), "portfolio_solver")
 
 # ── 0. Compilar solver si hace falta ─────────────────────────────────────────
 if not os.path.exists(SOLVER_BIN) or \
